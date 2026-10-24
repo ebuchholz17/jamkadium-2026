@@ -120,6 +120,7 @@ typedef struct vine_game {
     mine_cell *cells;
     i32 fieldWidth;
     i32 fieldHeight;
+    i32 numTrimmersInField;
     i32 numBombs;
 
     vine_game_state state;

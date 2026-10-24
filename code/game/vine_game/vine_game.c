@@ -48,16 +48,19 @@ void setDifficulty (vine_game_difficulty difficulty) {
             vg->fieldWidth = 9;
             vg->fieldHeight = 9;
             vg->numBombs = 10;
+            vg->numTrimmersInField = 3;
         } break;
         case VINE_GAME_DIFFICULTY_MEDIUM: {
             vg->fieldWidth = 16;
             vg->fieldHeight = 16;
             vg->numBombs = 40;
+            vg->numTrimmersInField = 6;
         } break;
         case VINE_GAME_DIFFICULTY_HARD: {
             vg->fieldWidth = 50;
             vg->fieldHeight = 28;
             vg->numBombs = 200;
+            vg->numTrimmersInField = 12;
         } break;
     }
 }
@@ -66,16 +69,17 @@ void initVineGame (vine_game *vineGame, mem_arena *memory) {
     vg = vineGame;
     vg->isInitialized = true;
     vg->vineNodeList = vine_node_listInit(memory, 2000);
-    vg->cameraZoom = 2.0f;
+    vg->cameraZoom = 2.0f; // TODO(vg) change per difficulty?
 
     // Put vine in the 0 slot, not to be used
     vine_node v = {};
     v.id.val = vg->vineNodeList.numValues;
     vine_node_listPush(&vg->vineNodeList, v);
 
+    // TODO(vg) make per difficulty?
     vg->vineSeekDelay = 3.5f;
     vg->vineSplitLifeTime = 15;
-    vg->numTrimmers = 20; // TODO(vg) pick up trimmers in grid
+    vg->numTrimmers = 0;
 }
 
 b32 cellIsNextToStartingCell (mine_cell *cell, mine_cell *startingCell) {
@@ -510,6 +514,43 @@ void determineTargetBombForVine (vine_node *vine) {
     popScratchMemory(m);
 }
 
+void spawnTrimmers (void) {
+    i32 numTrimmersPlaced = 0;
+
+    scratch_mem_marker m = pushScratchMemory();
+
+    mine_cell **validCells = allocMemory(scratchMemory, sizeof(mine_cell *) * vg->fieldWidth * vg->fieldHeight);
+    i32 numValidCells = 0;
+
+    for (int i = 0; i < vg->fieldHeight; ++i) {
+        for (int j = 0; j < vg->fieldWidth; ++j) {
+            mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+            vine_node *vine = getVineByID(cell->vineID);
+            b32 hasVine = vine && vine->active;
+            if (!cell->hasBomb && cell->numAdjBombs == 0 && !hasVine) {
+                validCells[numValidCells++] = cell;
+            }
+        }
+    }
+
+    for (i32 i = numValidCells - 1; i >= 0; --i) {
+        mine_cell *cell = validCells[i];
+
+        i32 randomIndex = randomU32() % (numValidCells);
+        mine_cell *randomCell = validCells[randomIndex];
+    
+        validCells[randomIndex] = cell;
+        validCells[i] = randomCell;
+    }
+
+    for (i32 i = 0; i < vg->numTrimmersInField && i < numValidCells; i++) {
+        mine_cell *cell = validCells[i];
+        cell->hasTrimmers = true;
+    }
+
+    popScratchMemory(m);
+}
+
 void openAllNearbyZeroValueCells (mine_cell *startCell, mem_arena *tempMemory, b32 awardScore) {
     scratch_mem_marker m = pushScratchMemory();
 
@@ -687,6 +728,13 @@ void startGameWithDifficulty (vine_game_difficulty difficulty, mem_arena *memory
 
     vg->cells = allocMemory(memory, sizeof(mine_cell) * vg->fieldWidth * vg->fieldHeight);
 
+    for (int i = 0; i < vg->fieldHeight; ++i) {
+        for (int j = 0; j < vg->fieldWidth; ++j) {
+            mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+            cell->row = i;
+            cell->col = j;
+        }
+    }
 
     // add powerups (will be trimmers in this game)
     //for (int i = numCellsLessLastRows - 1; i >= 0; --i) {
@@ -805,7 +853,6 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
     localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
 
-
     if (input->pointerJustDown) {
         vg->gameSpacePointerDownPos = (vec2){
             .x = localPointerPos.x,
@@ -863,6 +910,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                             vine->seekTimer = vg->vineSeekDelay;
 
                             openAllNearbyZeroValueCells(cell, tempMemory, false);
+                            spawnTrimmers();
                         }
                         else {
                             openCell(cell);
@@ -872,7 +920,9 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                 else {
                     // trimmers
                     if (cell->hasTrimmers) {
-                        // TODO(vg)
+                        cell->hasTrimmers = false;
+                        vg->numTrimmers++;
+                        // TODO(vg) SFX
                     }
                     else if (!cell->hasBomb && cell->numAdjBombs > 0) {
                         i32 numFlaggedNeighbors = 0;
@@ -1019,11 +1069,10 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
         .scale = vg->cameraZoom
     });
 
+    // loop cells
     for (int i = 0; i < vg->fieldHeight; ++i) {
         for (int j = 0; j < vg->fieldWidth; ++j) {
             mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
-            cell->row = i;
-            cell->col = j;
 
             if (!cell->open) {
                 sprite cellSprite = defaultSprite();
@@ -1064,6 +1113,37 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
                     //    addSprite(pickupSprite, assets, "game_atlas", "s_power_grid", spriteList);
                     //}
                 }
+            }
+
+            if (cell->hasTrimmers && cell->open) {
+                sprite trimmersSprite = defaultSprite();
+                trimmersSprite.atlasKey = "game_atlas";
+                trimmersSprite.frameKey = "trimmers";
+                trimmersSprite.scale = 0.65f;
+                trimmersSprite.anchor.x = 0.5f;
+                trimmersSprite.anchor.y = 0.5f;
+                trimmersSprite.pos.x = (float)(cell->col * CELL_DIM) + CELL_DIM * 0.5f;
+                trimmersSprite.pos.y = (float)(cell->row * CELL_DIM) + CELL_DIM * 0.5f;
+                spriteManAddSprite(trimmersSprite);
+            }
+        }
+    }
+
+    // trimmers
+    for (int i = 0; i < vg->fieldHeight; ++i) {
+        for (int j = 0; j < vg->fieldWidth; ++j) {
+            mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+
+            if (cell->hasTrimmers && cell->open) {
+                sprite trimmersSprite = defaultSprite();
+                trimmersSprite.atlasKey = "game_atlas";
+                trimmersSprite.frameKey = "trimmers";
+                trimmersSprite.scale = 0.5f;
+                trimmersSprite.anchor.x = 0.5f;
+                trimmersSprite.anchor.y = 0.5f;
+                trimmersSprite.pos.x = (float)(cell->col * CELL_DIM) + CELL_DIM * 0.5f;
+                trimmersSprite.pos.y = (float)(cell->row * CELL_DIM) + CELL_DIM * 0.5f;
+                spriteManAddSprite(trimmersSprite);
             }
         }
     }

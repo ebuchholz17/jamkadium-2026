@@ -256,6 +256,7 @@
             </struct>
             <key type="filename">game_atlas/golfman.bmp</key>
             <key type="filename">game_atlas/sheep.png</key>
+            <key type="filename">game_atlas/trimmers.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
