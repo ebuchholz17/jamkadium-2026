@@ -2,6 +2,8 @@
 #define HASH_MAP_H
 
 #include "gng_types.h"
+#include "gng_platform.h"
+#include <stdio.h>
 
 #define HASH_MAP_TYPE_STRUCT(x) HASH_MAP_TYPE_STRUCT_(x)
 #define HASH_MAP_TYPE_STRUCT_(x) x##_hash_map
@@ -60,7 +62,6 @@ void HASH_MAP_STORE(HASH_MAP_TYPE) (HASH_MAP_TYPE_STRUCT(HASH_MAP_TYPE) *hashMap
         .key = key,
         .value = value
     };
-;
 }
 
 HASH_MAP_TYPE *HASH_MAP_GET_PTR(HASH_MAP_TYPE) (HASH_MAP_TYPE_STRUCT(HASH_MAP_TYPE) *hashMap, char *key) {

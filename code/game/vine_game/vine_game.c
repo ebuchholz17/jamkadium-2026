@@ -6,8 +6,31 @@
 #include "../gng_sprites.h"
 #include "../gng_virtual_input.h"
 
+#include "atan.c"
+
 vine_game *vg;
 mem_arena *scratchMemory;
+
+f32 arctangent2(f32 y, f32 x) {
+    if (x > 0.0f) {
+        return arctangent(y / x);
+    }
+    else if (x < 0.0f && y >= 0.0f) {
+        return arctangent(y / x) + PI;
+    }
+    else if (x < 0.0f && y < 0.0f) {
+        return arctangent(y / x) - PI;
+    }
+    else if (x == 0.0f && y > 0.0f) {
+        return PI / 2.0f;
+    }
+    else if (x == 0.0f && y < 0.0f) {
+        return -PI / 2.0f;
+    }
+    else {
+        return 0.0f;
+    }
+}
 
 scratch_mem_marker pushScratchMemory (void) {
     scratch_mem_marker result = {};
@@ -42,6 +65,14 @@ void setDifficulty (vine_game_difficulty difficulty) {
 void initVineGame (vine_game *vineGame, mem_arena *memory) {
     vg = vineGame;
     vg->isInitialized = true;
+    vg->vineNodeList = vine_node_listInit(memory, 2000);
+
+    // Put vine in the 0 slot, not to be used
+    vine_node v = {};
+    v.id.val = vg->vineNodeList.numValues;
+    vine_node_listPush(&vg->vineNodeList, v);
+
+    vg->vineSeekDelay = 1.0f;
 }
 
 b32 cellIsNextToStartingCell (mine_cell *cell, mine_cell *startingCell) {
@@ -107,6 +138,343 @@ void placeBombs (mine_cell *firstCell) {
                 }
             }
         }
+    }
+}
+
+vine_node *spawnNewVine (void) {
+    vine_node *result = 0;
+    for (i32 i = 1; i < vg->vineNodeList.numValues; i++) {
+        vine_node *vine = &vg->vineNodeList.values[i];
+        if (!vine->active) {
+            result = vine;
+        }
+    }
+
+    if (!result) {
+        vine_node b = {};
+        b.id.val = vg->vineNodeList.numValues;
+        vine_node_listPush(&vg->vineNodeList, b);
+        result = &vg->vineNodeList.values[vg->vineNodeList.numValues - 1];
+    }
+
+    // reset bubble
+    entity_id id = result->id;
+    *result = (vine_node){};
+    result->id = id;
+
+    result->active = true;
+
+    return result;
+}
+
+vine_node *getVineByID (entity_id id) {
+    if (id.val == 0) {
+        return 0;
+    }
+
+    if (id.val >= 0 && id.val < vg->vineNodeList.numValues) {
+        vine_node *result = &vg->vineNodeList.values[id.val];
+        if (result->id.gen == id.gen) {
+            return result;
+        }
+    }
+    return 0;
+}
+
+void sortCells (mine_cell_ptr_list *cells) {
+    for (int i = 0; i < cells->numValues; ++i) {
+        for (int j = i; j > 0; --j) {
+            mine_cell *first = cells->values[j-1];
+            mine_cell *second = cells->values[j];
+            if (second->sortValue < first->sortValue) {
+                cells->values[j-1] = second;
+                cells->values[j] = first;
+            }
+        }
+    }
+}
+
+// https://stackoverflow.com/questions/3581528/how-is-the-square-root-function-implemented
+f32 squareRoot (f32 n){
+  // Max and min are used to take into account numbers less than 1
+    f32 lo = 1 < n ? 1 : n;
+    f32 hi = 1 > n ? 1 : n;
+    f32 mid;
+
+  // Update the bounds to be off the target by a factor of 10
+  while(100 * lo * lo < n) lo *= 10;
+  while(0.01 * hi * hi > n) hi *= 0.1;
+
+  for(int i = 0 ; i < 100 ; i++){
+      mid = (lo+hi)/2;
+      if(mid*mid == n) return mid;
+      if(mid*mid > n) hi = mid;
+      else lo = mid;
+  }
+  return mid;
+}
+
+
+
+void coordKeyFromRowCol (i32 row, i32 col, char *key) {
+    for (i32 i = 0; i < 16; i++) {
+        key[i] = 'x';
+    }
+    stringFromI32Unterminated(row, key, 4);
+    stringFromI32Unterminated(col, key + 6, 4);
+    key[15] = 0;
+}
+
+void pathFindTargetRowColFromVineNode (i32 targetRow, i32 targetCol, vine_node *vine, i32 *outRow, i32 *outCol) {
+    *outRow = -1;
+    *outCol = -1;
+
+    if (vine->row == targetRow && vine->col == targetCol) {
+        *outRow = vine->row;
+        *outCol = vine->col;
+        return;
+    }
+
+    scratch_mem_marker m = pushScratchMemory();
+
+    pathfinding_node startNode = {};
+    startNode.coords.row = vine->row;
+    startNode.coords.col = vine->col;
+    startNode.coords.key = allocMemory(scratchMemory, 16 * sizeof(char));
+    coordKeyFromRowCol(startNode.coords.row, startNode.coords.col, startNode.coords.key);
+
+    f32 diffX = (f32)(targetCol - startNode.coords.col);
+    f32 diffY = (f32)(targetRow - startNode.coords.row);
+    startNode.value = squareRoot(diffX * diffX + diffY * diffY);
+
+    pathfinding_node_list nodes = pathfinding_node_listInit(scratchMemory, vg->fieldWidth * vg->fieldHeight);
+    pathfinding_node_listPush(&nodes, startNode);
+
+    cell_coord dummyCoord = {
+        .row = -1,
+        .col = -1
+    };
+    dummyCoord.key = allocMemory(scratchMemory, 16 * sizeof(char));
+    coordKeyFromRowCol(dummyCoord.row, dummyCoord.col, dummyCoord.key);
+
+    cell_coord_hash_map seenPoints = cell_coord_hash_mapInit(scratchMemory, 4 * vg->fieldWidth * vg->fieldHeight);
+    cell_coord_hash_mapStore(&seenPoints, dummyCoord, dummyCoord.key);
+
+    // TODO(ebuchholz): try inserting nodes after processed ones, to avoid splicing?
+    while (nodes.numValues > 0) {
+        pathfinding_node node = nodes.values[0];
+        pathfinding_node_listSplice(&nodes, 0);
+
+        if (node.coords.col == targetCol && node.coords.row == targetRow) {
+            cell_coord previousCoords = cell_coord_hash_mapGetVal(&seenPoints, node.coords.key);
+
+            if (previousCoords.col == vine->col && previousCoords.row == vine->row) {
+                *outRow = targetRow;
+                *outCol = targetCol;
+            }
+            else {
+                // return node after first
+                cell_coord secondLastCoords = previousCoords;
+                while (previousCoords.col != vine->col || previousCoords.row != vine->row) {
+                    secondLastCoords = previousCoords;
+                    previousCoords = cell_coord_hash_mapGetVal(&seenPoints, previousCoords.key);
+                }
+                *outRow = secondLastCoords.row;
+                *outCol = secondLastCoords.col;
+            }
+
+            break;
+        }
+        else {
+            for (int i = -1; i <= 1; ++i) {
+                for (int j = -1; j <= 1; ++j) {
+                    if (i == 0 && j == 0) {
+                        continue;
+                    }
+                    if (i != 0 && j != 0) {
+                        continue;
+                    }
+
+                    cell_coord coords = {};
+                    coords.col = node.coords.col + j;
+                    coords.row = node.coords.row + i;
+                    coords.key = allocMemory(scratchMemory, 16 * sizeof(char));
+                    coordKeyFromRowCol(coords.row, coords.col, coords.key);
+
+                    if (coords.col < 0 || coords.col >= vg->fieldWidth ||
+                        coords.row < 0 || coords.row >= vg->fieldHeight)
+                    {
+                        continue;
+                    }
+
+                    mine_cell nextMineCell = vg->cells[coords.row * vg->fieldWidth * coords.col];
+
+                    vine_node *existingVine = getVineByID(nextMineCell.vineID);
+                    if (!existingVine || !existingVine->active) {
+                        cell_coord *existingCoord = cell_coord_hash_mapGetPtr(&seenPoints, coords.key);
+                        if (!existingCoord) {
+                            pathfinding_node nextNode = {};
+                            nextNode.coords.col = coords.col;
+                            nextNode.coords.row = coords.row;
+                            nextNode.coords.key = allocMemory(scratchMemory, 16 * sizeof(char));
+                            coordKeyFromRowCol(nextNode.coords.row, nextNode.coords.col, nextNode.coords.key);
+                            diffX = (float)(targetCol - nextNode.coords.col);
+                            diffY = (float)(targetRow - nextNode.coords.row);
+                            nextNode.value = squareRoot(diffX * diffX + diffY * diffY);
+
+                            // TODO(ebuchholz): log-based insert
+                            if (nodes.numValues == 0) {
+                                pathfinding_node_listPush(&nodes, nextNode);
+                            }
+                            else {
+                                b32 inserted = false;
+                                for (int index = 0; index < nodes.numValues; ++index) {
+                                    pathfinding_node *existingNode = &nodes.values[index];
+                                    if (nextNode.value < existingNode->value) {
+                                        pathfinding_node_listInsert(&nodes, nextNode, index);
+                                        inserted = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!inserted) {
+                                    pathfinding_node_listPush(&nodes, nextNode);
+                                }
+                            }
+                            cell_coord_hash_mapStore(&seenPoints, node.coords, nextNode.coords.key);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    popScratchMemory(m);
+}
+
+void determineTargetBombForVine (vine_node *vine) {
+    scratch_mem_marker m = pushScratchMemory();
+
+    mine_cell_ptr_list cellsToSeek = mine_cell_ptr_listInit(scratchMemory, vg->numBombs);
+
+    switch (vine->bombStrat) {
+        case VINE_TARGET_BOMB_STRATEGY_RANDOM_DIR: {
+
+            f32 randomAngle = randomF32() * 2.0f * PI;
+            f32 range = (1.0f / 3.0f) * PI;
+            vec2 vinePos = {
+                .x = vine->col * CELL_DIM,
+                .y = vine->row * CELL_DIM
+            };
+            for (int i = 0; i < vg->fieldHeight; ++i) {
+                for (int j = 0; j < vg->fieldWidth; ++j) {
+                    mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+                    vine_node *cellsVine = getVineByID(cell->vineID);
+                    if (cell->hasBomb && !cellsVine) {
+                        vec2 cellPos = {
+                            .x = cell->col * CELL_DIM,
+                            .y = cell->row * CELL_DIM
+                        };
+                        vec2 diff = vec2Subtract(cellPos, vinePos);
+                        f32 angle = arctangent2(diff.y, diff.x);
+                        if (angle < 0.0f) {
+                            angle += 2.0f * PI;
+                        }
+                        f32 angleDiff = randomAngle - angle;
+                        if (angleDiff < 0.0f) {
+                            angleDiff = -angleDiff;
+                        }
+                        f32 maybeShorterAngleDiff = 2.0f * PI - angleDiff;
+                        angleDiff = maybeShorterAngleDiff < angleDiff ? maybeShorterAngleDiff : angleDiff;
+                        if (angleDiff <= range) {
+                            cell->sortValue = vec2Length(diff);
+                            mine_cell_ptr_listPush(&cellsToSeek, cell);
+                        }
+                    }
+                }
+            }
+
+        } break;
+        case VINE_TARGET_BOMB_STRATEGY_ORTHOGONAL_DIR: {
+
+        } break;
+        case VINE_TARGET_BOMB_STRATEGY_NEAREST: {
+            vec2 vinePos = {
+                .x = vine->col * CELL_DIM,
+                .y = vine->row * CELL_DIM
+            };
+            for (int i = 0; i < vg->fieldHeight; ++i) {
+                for (int j = 0; j < vg->fieldWidth; ++j) {
+                    mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+                    vine_node *cellsVine = getVineByID(cell->vineID);
+                    if (cell->hasBomb && !cellsVine) {
+                        vec2 cellPos = {
+                            .x = cell->col * CELL_DIM,
+                            .y = cell->row * CELL_DIM
+                        };
+                        vec2 diff = vec2Subtract(cellPos, vinePos);
+                        cell->sortValue = vec2Length(diff);
+                        mine_cell_ptr_listPush(&cellsToSeek, cell);
+                    }
+                }
+            }
+
+        } break;
+        case VINE_TARGET_BOMB_STRATEGY_RANDOM: {
+
+        } break;
+    }
+
+    sortCells(&cellsToSeek);
+
+    for (i32 i = 0; i < cellsToSeek.numValues; i++) {
+        mine_cell *targetCell = cellsToSeek.values[i];
+        i32 nextRow;
+        i32 nextCol;
+        pathFindTargetRowColFromVineNode(targetCell->row, targetCell->col, vine, &nextRow, &nextCol);
+        if (nextRow == -1 || nextCol == -1) {
+            continue;
+        }
+        vine->targetRow = targetCell->row;
+        vine->targetCol = targetCell->col;
+        break;
+    }
+
+    popScratchMemory(m);
+}
+
+
+
+void growVine (vine_node *vineNode) {
+    i32 nextRow;
+    i32 nextCol;
+    pathFindTargetRowColFromVineNode(vineNode->targetRow, vineNode->targetCol, vineNode, &nextRow, &nextCol);
+
+    if (nextRow != -1 && nextCol != -1) {
+        vineNode->isHead = false;
+
+        mine_cell *cell = &vg->cells[nextRow * vg->fieldWidth + nextCol];
+
+        vine_node *newVine = spawnNewVine();
+        newVine->row = cell->row;
+        newVine->col = cell->col;
+        newVine->isHead = true;
+        newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST;
+
+        cell->vineID = newVine->id;
+
+        if (vineNode->targetRow == newVine->row && vineNode->targetCol == newVine->col) {
+            determineTargetBombForVine(newVine);
+        }
+        else {
+            newVine->targetRow = vineNode->targetRow;
+            newVine->targetCol = vineNode->targetCol;
+        }
+
+        newVine->seekTimer = vg->vineSeekDelay;
+
+        newVine->prev = vineNode;
+        vineNode->next0 = newVine;
     }
 }
 
@@ -194,7 +562,7 @@ void openAllNearbyZeroValueCells (mine_cell *startCell, mem_arena *tempMemory, b
     popScratchMemory(m);
 }
 
-void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input) {
+void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input, f32 dt) {
     // TODO(vg): pan screen
 
     mat3x3 gameTransform = spriteManPeekMatrix();
@@ -217,6 +585,19 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                         vg->firstCellWasOpened = true;
                         cell->hasBomb = false;
                         placeBombs(cell);
+
+                        vine_node *vine = spawnNewVine();
+                        vine->row = cell->row;
+                        vine->col = cell->col;
+                        vine->isRoot = true;
+                        vine->isHead = true;
+                        vine->bombStrat = VINE_TARGET_BOMB_STRATEGY_RANDOM_DIR;
+
+                        cell->vineID = vine->id;
+
+                        determineTargetBombForVine(vine);
+                        vine->seekTimer = vg->vineSeekDelay;
+
                         openAllNearbyZeroValueCells(cell, tempMemory, false);
                     }
                     else {
@@ -304,6 +685,17 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
         }
     }
 
+    // grow vines
+    for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
+        vine_node *vine = &vg->vineNodeList.values[i];
+        if (vine->active && vine->isHead) {
+            vine->seekTimer -= dt;
+            if (vine->seekTimer <= 0.0f) {
+                growVine(vine);
+            }
+        }
+    }
+
     if (gameOver) {
         // TODO(vg) game over state
         vg->state = VINE_GAME_STATE_TITLE_SCREEN;
@@ -330,7 +722,7 @@ void updateVineGame (vine_game *bg, game_input *input,
             }
         } break;
         case VINE_GAME_STATE_GAMEPLAY: {
-            updateGameplay(memory, sm, input);
+            updateGameplay(memory, sm, input, dt);
         } break;
         case VINE_GAME_STATE_GAME_OVER_SCREEN: {
         } break;
@@ -388,6 +780,7 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
                 cellSprite.frameKey = "open_cell";
                 cellSprite.pos.x = (float)(cell->col * CELL_DIM);
                 cellSprite.pos.y = (float)(cell->row * CELL_DIM);
+                spriteManAddSprite(cellSprite);
 
                 if (cell->hasBomb) {
                     cellSprite.frameKey = "bomb";
@@ -409,6 +802,29 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             }
         }
     }
+
+    for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
+        vine_node *vine = &vg->vineNodeList.values[i];
+        if (vine->active) {
+            sprite vineSprite = defaultSprite();
+            vineSprite.atlasKey = "game_atlas";
+            vineSprite.frameKey = "sheep";
+            vineSprite.tint = 0x0000ff;
+            vineSprite.scale = 0.75f;
+            vineSprite.anchor.x = 0.5f;
+            vineSprite.anchor.y = 0.5f;
+            vineSprite.pos.x = (float)(vine->col * CELL_DIM) + CELL_DIM * 0.5f;
+            vineSprite.pos.y = (float)(vine->row * CELL_DIM) + CELL_DIM * 0.5f;
+            spriteManAddSprite(vineSprite);
+
+            // debug vine targets
+            vineSprite.tint = 0xff0000;
+            vineSprite.pos.x = (float)(vine->targetCol * CELL_DIM) + CELL_DIM * 0.5f;
+            vineSprite.pos.y = (float)(vine->targetRow * CELL_DIM) + CELL_DIM * 0.5f;
+            spriteManAddSprite(vineSprite);
+        }
+    }
+
 }
 
 void drawVineGame (vine_game *vg, plat_api platAPI) {

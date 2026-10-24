@@ -2,30 +2,30 @@
 #include "../gng_sprites.h"
 
 // https://opensource.apple.com/source/Libm/Libm-315/Source/Intel/atan.c
-#include "atan.c"
+//#include "atan.c"
 
 bubble_game *bubbleGame;
 mem_arena *scratchMemory;
 
 // https://stackoverflow.com/questions/3581528/how-is-the-square-root-function-implemented
-f32 squareRoot (f32 n){
-  // Max and min are used to take into account numbers less than 1
-    f32 lo = 1 < n ? 1 : n;
-    f32 hi = 1 > n ? 1 : n;
-    f32 mid;
-
-  // Update the bounds to be off the target by a factor of 10
-  while(100 * lo * lo < n) lo *= 10;
-  while(0.01 * hi * hi > n) hi *= 0.1;
-
-  for(int i = 0 ; i < 100 ; i++){
-      mid = (lo+hi)/2;
-      if(mid*mid == n) return mid;
-      if(mid*mid > n) hi = mid;
-      else lo = mid;
-  }
-  return mid;
-}
+//f32 squareRoot (f32 n){
+//  // Max and min are used to take into account numbers less than 1
+//    f32 lo = 1 < n ? 1 : n;
+//    f32 hi = 1 > n ? 1 : n;
+//    f32 mid;
+//
+//  // Update the bounds to be off the target by a factor of 10
+//  while(100 * lo * lo < n) lo *= 10;
+//  while(0.01 * hi * hi > n) hi *= 0.1;
+//
+//  for(int i = 0 ; i < 100 ; i++){
+//      mid = (lo+hi)/2;
+//      if(mid*mid == n) return mid;
+//      if(mid*mid > n) hi = mid;
+//      else lo = mid;
+//  }
+//  return mid;
+//}
 
 // https://stackoverflow.com/questions/35183929/approximating-atan-without-a-math-library
 //f32 arctangent(f32 x)
@@ -47,24 +47,26 @@ f32 squareRoot (f32 n){
 //}
 
 f32 arctangent2(f32 y, f32 x) {
-    if (x > 0.0f) {
-        return arctangent(y / x);
-    }
-    else if (x < 0.0f && y >= 0.0f) {
-        return arctangent(y / x) + PI;
-    }
-    else if (x < 0.0f && y < 0.0f) {
-        return arctangent(y / x) - PI;
-    }
-    else if (x == 0.0f && y > 0.0f) {
-        return PI / 2.0f;
-    }
-    else if (x == 0.0f && y < 0.0f) {
-        return -PI / 2.0f;
-    }
-    else {
-        return 0.0f;
-    }
+    // NOTE broken on purpose to work in vinesweeper
+    return 0.0f;
+    //if (x > 0.0f) {
+    //    return arctangent(y / x);
+    //}
+    //else if (x < 0.0f && y >= 0.0f) {
+    //    return arctangent(y / x) + PI;
+    //}
+    //else if (x < 0.0f && y < 0.0f) {
+    //    return arctangent(y / x) - PI;
+    //}
+    //else if (x == 0.0f && y > 0.0f) {
+    //    return PI / 2.0f;
+    //}
+    //else if (x == 0.0f && y < 0.0f) {
+    //    return -PI / 2.0f;
+    //}
+    //else {
+    //    return 0.0f;
+    //}
 }
 
 ScratchMemMarker pushScratchMemory (void) {

@@ -140,6 +140,39 @@ char *stringFromI32 (i32 num, char *buffer, u32 bufferLength) {
     return buffer;
 }
 
+char *stringFromI32Unterminated (i32 num, char *buffer, u32 bufferLength) {
+    i32 maxStringLength = 20;
+    char numberBuffer[20] = {0};
+
+    char *currentDigit = numberBuffer + (maxStringLength - 1);
+    char *stringEnd = currentDigit;
+
+    b32 isNegative = false;
+    if (num < 0) {
+        isNegative = true;
+        num = -num;
+    }
+
+    do {
+        --currentDigit;
+        *currentDigit = '0' + num % 10;
+        num /= 10;
+    } while (num != 0);
+
+    if (isNegative) {
+        --currentDigit;
+        *currentDigit = '-';
+    }
+
+    u32 stringLength = (u32)(stringEnd - currentDigit);
+
+    for (u32 i = 0; i < stringLength && i < bufferLength; ++i) {
+        buffer[i] = *currentDigit;
+        ++currentDigit;
+    }
+    return buffer;
+}
+
 char *stringFromU32 (i32 num, char *buffer, u32 bufferLength) {
     i32 maxStringLength = 20;
     char numberBuffer[20] = {0};
