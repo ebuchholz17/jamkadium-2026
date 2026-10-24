@@ -67,6 +67,7 @@ void initVineGame (vine_game *vineGame, mem_arena *memory) {
     vg = vineGame;
     vg->isInitialized = true;
     vg->vineNodeList = vine_node_listInit(memory, 2000);
+    vg->cameraZoom = 2.4f;
 
     // Put vine in the 0 slot, not to be used
     vine_node v = {};
@@ -769,12 +770,31 @@ void useTrimmersOnVine (vine_node *vine) {
 
 
 void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input, f32 dt) {
-    // TODO(vg): pan screen
+    // TODO(vg): pan screen with mouse
+    if (input->rightArrow.down) {
+        vg->cameraX += CAMERA_SPEED * dt;
+    }
+    if (input->leftArrow.down) {
+        vg->cameraX -= CAMERA_SPEED * dt;
+    }
+    if (input->upArrow.down) {
+        vg->cameraY -= CAMERA_SPEED * dt;
+    }
+    if (input->downArrow.down) {
+        vg->cameraY += CAMERA_SPEED * dt;
+    }
+
+    spriteManPushTransform((sprite_transform){
+        .pos = { .x = -vg->cameraX, .y = -vg->cameraY },
+        .scale = vg->cameraZoom
+    });
 
     mat3x3 gameTransform = spriteManPeekMatrix();
     mat3x3 invGameTransform = mat3x3Inv(gameTransform);
     vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
     localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+
+    spriteManPopMatrix();
 
     i32 mouseRow = (i32)(localPointerPos.y / CELL_DIM);
     i32 mouseCol = (i32)(localPointerPos.x / CELL_DIM);
@@ -951,6 +971,10 @@ void centerText (sprite_text *text) {
 
 void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     // TODO(vg) panning
+    spriteManPushTransform((sprite_transform){
+        .pos = { .x = -vg->cameraX, .y = -vg->cameraY },
+        .scale = vg->cameraZoom
+    });
 
     for (int i = 0; i < vg->fieldHeight; ++i) {
         for (int j = 0; j < vg->fieldWidth; ++j) {
@@ -1030,6 +1054,8 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             //spriteManAddSprite(vineSprite);
         }
     }
+
+    spriteManPopMatrix();
 
 }
 
