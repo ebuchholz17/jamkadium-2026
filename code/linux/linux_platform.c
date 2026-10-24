@@ -172,7 +172,7 @@ int main (void) {
 
     openGLRendererSetAttributes();
 
-    SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_OPENGL;
+    SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
     SDL_Window *window = SDL_CreateWindow("GNG", windowWidth, windowHeight, windowFlags);
 
     // Load game shared library
@@ -193,14 +193,14 @@ int main (void) {
     platAPI.mainMemorySize = 64 * 1024 * 1024;
     platAPI.mainMemory = malloc(platAPI.mainMemorySize);
     memset(platAPI.mainMemory, 0, platAPI.mainMemorySize);
-    platAPI.assetMemorySize = 192 * 1024 * 1024;
+    platAPI.assetMemorySize = 64 * 1024 * 1024;
     platAPI.assetMemory = malloc(platAPI.assetMemorySize);
     platAPI.scratchMemorySize = 24 * 1024 * 1024;
     platAPI.scratchMemory = malloc(platAPI.scratchMemorySize);
 
     // Memory for renderer
     mem_arena renderMemory = {};
-    renderMemory.capacity = 64 * 1024 * 1024;
+    renderMemory.capacity = 32 * 1024 * 1024;
     renderMemory.base = malloc(renderMemory.capacity);
     renderMemory.current = renderMemory.base;
 

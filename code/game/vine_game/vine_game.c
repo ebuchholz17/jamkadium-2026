@@ -7,7 +7,6 @@
 #include "../gng_virtual_input.h"
 
 #include "atan.c"
-#include <stdio.h>
 
 vine_game *vg;
 mem_arena *scratchMemory;
@@ -317,9 +316,6 @@ void pathFindTargetRowColFromVineNode (i32 targetRow, i32 targetCol, vine_node *
                     }
 
                     mine_cell nextMineCell = vg->cells[coords.row * vg->fieldWidth + coords.col];
-                    if (nextMineCell.vineID.val != 0) {
-                        printf("cell has vine\n");
-                    }
 
                     vine_node *existingVine = getVineByID(nextMineCell.vineID);
                     if (!existingVine || !existingVine->active) {
@@ -355,12 +351,6 @@ void pathFindTargetRowColFromVineNode (i32 targetRow, i32 targetCol, vine_node *
                             }
                             cell_coord_hash_mapStore(&seenPoints, node.coords, nextNode.coords.key);
                         }
-                    }
-                    else {
-                        if (existingVine) {
-                            printf("inactive vine!\n");
-                        }
-                        printf("tried to step over vine\n");
                     }
                 }
             }
@@ -649,7 +639,7 @@ void growVine (vine_node *vineNode) {
 
                 newVine->prev = vineNode->id;
                 vine_node *nextVine0 = getVineByID(vineNode->next0);
-                if (nextVine0 == NULL || !nextVine0->active) {
+                if (nextVine0 == 0 || !nextVine0->active) {
                     vineNode->next0 = newVine->id;
                 }
                 else {
@@ -894,7 +884,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
 
             if (cellHasVine && vg->numTrimmers > 0) {
                 useTrimmersOnVine(cellsVine);
-                cellsVine = NULL;
+                cellsVine = 0;
             }
             else if (!cell->open) {
                 cell->flagged = !cell->flagged;

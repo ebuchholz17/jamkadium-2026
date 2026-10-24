@@ -3,7 +3,6 @@
 
 #include "gng_types.h"
 #include "gng_platform.h"
-#include <stdio.h>
 
 #define HASH_MAP_TYPE_STRUCT(x) HASH_MAP_TYPE_STRUCT_(x)
 #define HASH_MAP_TYPE_STRUCT_(x) x##_hash_map

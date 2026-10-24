@@ -38,15 +38,16 @@ void *memset (void *dest, i32 c, unsigned long size) {
 }
 
 WASM_EXPORT void initGame (void) {
+   tempMemCapacity = 32 * 1024 * 1024;
    memCapacity = getMemCapacity();
 
    // reserve space at the beginning of memory for temp memory
-   webAllocMemory(150 * 1024 * 1024);
+   webAllocMemory(tempMemCapacity);
    memStart = memCurrent; 
 
-   u32 mainMemorySize = 100 * 1024 * 1024;
-   u32 assetMemorySize = 200 * 1024 * 1024;
-   u32 scratchMemorySize = 100 * 1024 * 1024;
+   u32 mainMemorySize = 24 * 1024 * 1024;
+   u32 assetMemorySize = 64 * 1024 * 1024;
+   u32 scratchMemorySize = 24 * 1024 * 1024;
 
    platAPI = (plat_api){
        .consoleLog = consoleLog,
@@ -60,7 +61,7 @@ WASM_EXPORT void initGame (void) {
        .scratchMemory = webAllocMemory(scratchMemorySize)
    };
 
-   u32 renderMemorySize = 50 * 1024 * 1024;
+   u32 renderMemorySize = 32 * 1024 * 1024;
    void *renderMemoryBase = webAllocMemory(renderMemorySize);
 
    renderMemory = (mem_arena){
@@ -96,6 +97,17 @@ WASM_EXPORT void onMouseDown () {
 
 WASM_EXPORT void onMouseUp () {
     input.pointerDown = false;
+}
+
+WASM_EXPORT void onMouse2Down () {
+    if (!input.pointer2Down) {
+        input.pointer2JustDown = true;
+    }
+    input.pointer2Down = true;
+}
+
+WASM_EXPORT void onMouse2Up () {
+    input.pointer2Down = false;
 }
 
 WASM_EXPORT void onLetterKeyDown (u32 letterCode) {

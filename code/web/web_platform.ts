@@ -30,6 +30,8 @@ class GameAPI {
     onMouseMove: CallableFunction = null;
     onMouseUp: CallableFunction = null;
     onMouseDown: CallableFunction = null;
+    onMouse2Up: CallableFunction = null;
+    onMouse2Down: CallableFunction = null;
 
     onLetterKeyDown: CallableFunction = null;
     onLetterKeyUp: CallableFunction = null;
@@ -61,6 +63,7 @@ let gameInputKeyboardLetters = "abcdefghijklmnopqrstuvwxyz";
 
 class GameInputEvent {
     public type: GameInputEventType;
+    public buttonIndex: number = 0;
     public x: number = 0;
     public y: number = 0;
 
@@ -169,10 +172,20 @@ function processInputEvents (gameAPI: GameAPI, events: GameInputEvent[], memory:
                 gameAPI.onMouseMove(event.x, event.y);
             } break;
             case GameInputEventType.MOUSE_DOWN: {
-                gameAPI.onMouseDown();
+                if (event.buttonIndex == 0) {
+                    gameAPI.onMouseDown();
+                }
+                else if (event.buttonIndex == 2){
+                    gameAPI.onMouse2Down();
+                }
             } break;
             case GameInputEventType.MOUSE_UP: {
-                gameAPI.onMouseUp();
+                if (event.buttonIndex == 0) {
+                    gameAPI.onMouseUp();
+                }
+                else if (event.buttonIndex == 2){
+                    gameAPI.onMouse2Up();
+                }
             } break;
             case GameInputEventType.KEY_DOWN: {
                 if (letter != "") {
@@ -336,8 +349,9 @@ function clientPosToScreenPos (clientPos: number, canvasDim: number, clientDim: 
 }
 
 async function main (): Promise<void> {
-    let pageSize: number = 256 * 1024;
-    let numPages: number = 10000;
+    let totalMemory = 256 * 1024 * 1024;
+    let pageSize: number = 64 * 1024;
+    let numPages: number = Math.floor(totalMemory / pageSize);
     let wasmMemory: WebAssembly.Memory = new WebAssembly.Memory({ initial: numPages });
     let memory: Uint8Array = new Uint8Array(wasmMemory.buffer);
 
@@ -431,6 +445,8 @@ async function main (): Promise<void> {
         onMouseMove: (wasmInstance.exports.onMouseMove as CallableFunction),
         onMouseDown: (wasmInstance.exports.onMouseDown as CallableFunction),
         onMouseUp: (wasmInstance.exports.onMouseUp as CallableFunction),
+        onMouse2Down: (wasmInstance.exports.onMouse2Down as CallableFunction),
+        onMouse2Up: (wasmInstance.exports.onMouse2Up as CallableFunction),
         onLetterKeyDown: (wasmInstance.exports.onLetterKeyDown as CallableFunction),
         onLetterKeyUp: (wasmInstance.exports.onLetterKeyUp as CallableFunction),
         onArrowKeyDown: (wasmInstance.exports.onArrowKeyDown as CallableFunction),
@@ -470,6 +486,7 @@ async function main (): Promise<void> {
 
     mainDiv.draggable = false;
 
+
     let canvas: HTMLCanvasElement = document.createElement("canvas");
     //@ts-ignore
     canvas.style["touch-action"] = "none";
@@ -495,7 +512,8 @@ async function main (): Promise<void> {
     let inputEvents: GameInputEvent[] = [];
     canvas.addEventListener("mousedown", (e: MouseEvent): void => {
         let inputEvent = <GameInputEvent>{
-            type: GameInputEventType.MOUSE_DOWN
+            type: GameInputEventType.MOUSE_DOWN,
+            buttonIndex: e.button
         };
         inputEvents.push(inputEvent);
 
@@ -507,7 +525,8 @@ async function main (): Promise<void> {
     });
     canvas.addEventListener("mouseup", (e: MouseEvent): void => {
         let inputEvent = <GameInputEvent>{
-            type: GameInputEventType.MOUSE_UP
+            type: GameInputEventType.MOUSE_UP,
+            buttonIndex: e.button
         };
         inputEvents.push(inputEvent);
     });
@@ -536,6 +555,13 @@ async function main (): Promise<void> {
         });
     });
 
+
+    document.addEventListener("contextmenu", (e: Event): void => {
+        e.preventDefault();
+    });
+    canvas.addEventListener("contextmenu", (e: Event): void => {
+        e.preventDefault();
+    });
 
     let touches: WebTouch[] = [];
     const MAX_NUM_TOUCHES = 4;
