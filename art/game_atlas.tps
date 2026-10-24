@@ -4,7 +4,7 @@
         <key>fileFormatVersion</key>
         <int>6</int>
         <key>texturePackerVersion</key>
-        <string>7.0.0</string>
+        <string>8.3.0</string>
         <key>autoSDSettings</key>
         <array>
             <struct type="AutoSDSettings">
@@ -144,6 +144,8 @@
         <false/>
         <key>trimSpriteNames</key>
         <false/>
+        <key>enableCacheBusting</key>
+        <false/>
         <key>prependSmartFolderName</key>
         <false/>
         <key>autodetectAnimations</key>
@@ -173,8 +175,18 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
-            <key type="filename">game_atlas/block_blink.png</key>
-            <key type="filename">game_atlas/tile_backing.png</key>
+            <key type="filename">game_atlas/1.png</key>
+            <key type="filename">game_atlas/2.png</key>
+            <key type="filename">game_atlas/3.png</key>
+            <key type="filename">game_atlas/4.png</key>
+            <key type="filename">game_atlas/5.png</key>
+            <key type="filename">game_atlas/6.png</key>
+            <key type="filename">game_atlas/7.png</key>
+            <key type="filename">game_atlas/8.png</key>
+            <key type="filename">game_atlas/bomb.png</key>
+            <key type="filename">game_atlas/closed_cell.png</key>
+            <key type="filename">game_atlas/flag.png</key>
+            <key type="filename">game_atlas/open_cell.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -183,43 +195,9 @@
                 <key>scale9Enabled</key>
                 <false/>
                 <key>scale9Borders</key>
-                <rect>4,4,8,8</rect>
+                <rect>3,3,6,6</rect>
                 <key>scale9Paddings</key>
-                <rect>4,4,8,8</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">game_atlas/blue_tile.png</key>
-            <key type="filename">game_atlas/bone_1.bmp</key>
-            <key type="filename">game_atlas/cyan_tile.png</key>
-            <key type="filename">game_atlas/driver.bmp</key>
-            <key type="filename">game_atlas/fireball_0.bmp</key>
-            <key type="filename">game_atlas/ghost_0.bmp</key>
-            <key type="filename">game_atlas/ghoul_0.bmp</key>
-            <key type="filename">game_atlas/golfer_blue_swing_2.bmp</key>
-            <key type="filename">game_atlas/golfer_red_swing_2.bmp</key>
-            <key type="filename">game_atlas/golfman.bmp</key>
-            <key type="filename">game_atlas/green_tile.png</key>
-            <key type="filename">game_atlas/iron.bmp</key>
-            <key type="filename">game_atlas/magenta_tile.png</key>
-            <key type="filename">game_atlas/putter.bmp</key>
-            <key type="filename">game_atlas/red_tile.png</key>
-            <key type="filename">game_atlas/sheep.png</key>
-            <key type="filename">game_atlas/skeleton.bmp</key>
-            <key type="filename">game_atlas/wedge.bmp</key>
-            <key type="filename">game_atlas/wind_arrow.bmp</key>
-            <key type="filename">game_atlas/yellow_tile.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>8,8,16,16</rect>
-                <key>scale9Paddings</key>
-                <rect>8,8,16,16</rect>
+                <rect>3,3,6,6</rect>
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
@@ -260,51 +238,6 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">game_atlas/enemy_1.bmp</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>3,5,5,9</rect>
-                <key>scale9Paddings</key>
-                <rect>3,5,5,9</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">game_atlas/enemy_2.bmp</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>5,3,10,6</rect>
-                <key>scale9Paddings</key>
-                <rect>5,3,10,6</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">game_atlas/enemy_3.bmp</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>5,3,9,5</rect>
-                <key>scale9Paddings</key>
-                <rect>5,3,9,5</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
             <key type="filename">game_atlas/face_button_down.png</key>
             <key type="filename">game_atlas/face_button_up.png</key>
             <struct type="IndividualSpriteSettings">
@@ -321,7 +254,8 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">game_atlas/flag.bmp</key>
+            <key type="filename">game_atlas/golfman.bmp</key>
+            <key type="filename">game_atlas/sheep.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -330,24 +264,9 @@
                 <key>scale9Enabled</key>
                 <false/>
                 <key>scale9Borders</key>
-                <rect>8,30,15,59</rect>
+                <rect>8,8,16,16</rect>
                 <key>scale9Paddings</key>
-                <rect>8,30,15,59</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
-            <key type="filename">game_atlas/sun.bmp</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>32,32,64,64</rect>
-                <key>scale9Paddings</key>
-                <rect>32,32,64,64</rect>
+                <rect>8,8,16,16</rect>
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
@@ -383,6 +302,12 @@
         <key>normalMapSheetFileName</key>
         <filename></filename>
         <key>exporterProperties</key>
-        <map type="ExporterProperties"/>
+        <map type="ExporterProperties">
+            <key>libgdx::legacy-output</key>
+            <struct type="ExporterProperty">
+                <key>value</key>
+                <string>true</string>
+            </struct>
+        </map>
     </struct>
 </data>

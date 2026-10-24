@@ -51,6 +51,8 @@ typedef struct sprite_man {
     asset_man *assetMan;
 } sprite_man;
 
+extern sprite_man *spriteMan;
+
 typedef struct sprite_transform {
     vec2 pos;
     f32 scale;

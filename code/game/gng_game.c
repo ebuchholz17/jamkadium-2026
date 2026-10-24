@@ -16,7 +16,8 @@ plat_console_log *debugConsoleLog;
 
 #include "hitbox/hitbox.c"
 //#include "ghost_racing_game/ghost_racing_game.c"
-#include "bubble_game/bubble_game.c"
+//#include "bubble_game/bubble_game.c"
+#include "vine_game/vine_game.c"
 
 typedef struct key_path_pair {
     char *key;
@@ -231,7 +232,7 @@ UPDATE_GNG_GAME(updateGNGGame) {
         state->initialized = true;
 
         //state->grGame = (GrGame){};
-        state->bubbleGame = (bubble_game){};
+        state->vineGame = (vine_game){};
 
         setRNGSeed(platAPI.rngSeedFromTime());
 
@@ -248,20 +249,19 @@ UPDATE_GNG_GAME(updateGNGGame) {
 
         // TODO: preprocessed string IDs
         // TODO: ATLASES CLOBBER MEMORY IN WEB BUILD!!! investigate
-        // TODO: preprocessed string IDs
         asset_to_load_listPush(assetList, (asset_to_load){
             .name = "atlas_data",
             .path = "assets/game_atlas.txt",
             .type = ASSET_TO_LOAD_TYPE_ATLAS_DATA,
             .loaded = false,
-            .key = "atlas"
+            .key = "game_atlas"
         });
         asset_to_load_listPush(assetList, (asset_to_load){
             .name = "atlas_texture",
             .path = "assets/game_atlas.bmp",
             .type = ASSET_TO_LOAD_TYPE_ATLAS_TEXTURE,
             .loaded = false,
-            .key = "atlas"
+            .key = "game_atlas"
         });
         asset_to_load_listPush(assetList, (asset_to_load){
             .name = "font",
@@ -270,115 +270,6 @@ UPDATE_GNG_GAME(updateGNGGame) {
             .loaded = false,
             .key = "font"
         });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "background",
-            .path = "assets/background.bmp",
-            .type = ASSET_TO_LOAD_TYPE_BITMAP,
-            .loaded = false,
-            .key = "background"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "frame",
-            .path = "assets/frame.bmp",
-            .type = ASSET_TO_LOAD_TYPE_BITMAP,
-            .loaded = false,
-            .key = "frame"
-        });
-
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_arrow",
-            .path = "assets/arrow.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_arrow"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_bought_unit",
-            .path = "assets/bought_unit.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_bought_unit"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_bubble_launch",
-            .path = "assets/bubble_launch.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_bubble_launch"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_bubble_land",
-            .path = "assets/bubble_land.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_bubble_land"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_cannon",
-            .path = "assets/cannon.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_cannon"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_enemy_grow",
-            .path = "assets/enemy_grow.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_enemy_grow"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_enemy_hit",
-            .path = "assets/enemy_hit.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_enemy_hit"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_enemy_killed",
-            .path = "assets/enemy_killed.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_enemy_killed"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_house_destroyed",
-            .path = "assets/house_destroyed.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_house_destroyed"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_pop",
-            .path = "assets/pop.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_pop"
-        });
-        asset_to_load_listPush(assetList, (asset_to_load){
-            .name = "sfx_slash",
-            .path = "assets/slash.wav",
-            .type = ASSET_TO_LOAD_TYPE_WAV,
-            .loaded = false,
-            .key = "sfx_slash"
-        });
-
-        // Sponge frame data
-        //key_path_pair hitboxFiles[] = {
-        //    {.key = "cockroach_dodge", .path = "assets/hitbox/cockroach_dodge.txt" },
-        //};
-
-        //u32 numHitboxFiles = sizeof(hitboxFiles) / sizeof(key_path_pair);
-        //for (u32 hitboxIndex = 0; hitboxIndex < numHitboxFiles; hitboxIndex++) {
-        //    key_path_pair *kpPair = &hitboxFiles[hitboxIndex];
-        //    asset_to_load_listPush(assetList, (asset_to_load){
-        //        .name = kpPair->key,
-        //        .path = kpPair->path,
-        //        .type = ASSET_TO_LOAD_TYPE_DATA,
-        //        .loaded = false,
-        //        .key = kpPair->key
-        //    });
-        //}
 
         for (u32 assetIndex = 0; assetIndex < assetList->numValues; ++assetIndex) {
             asset_to_load *asset = &assetList->values[assetIndex];
@@ -499,29 +390,30 @@ UPDATE_GNG_GAME(updateGNGGame) {
         //if (!state->grGame.isInitialized) {
         //    initGrGame(&state->grGame, &state->memory, &scratchMemory);
         //}
-        if (state->bubbleGame.reset) {
-            state->bubbleGame = (bubble_game){};
-            initBubbleGame(&state->bubbleGame, &state->memory);
+        if (state->vineGame.shouldReset) {
+            state->vineGame = (vine_game){};
+            initVineGame(&state->vineGame, &state->memory);
         }
 
-        if (!state->bubbleGame.isInitialized) {
-            initBubbleGame(&state->bubbleGame, &state->memory);
+        if (!state->vineGame.isInitialized) {
+            initVineGame(&state->vineGame, &state->memory);
         }
         
         if (platAPI.hasTouchControls) {
             setVirtualInput(&state->vInput, input, &platAPI);
         }
 
-        state->t += dt;
+        f32 actualDeltaTime = dt > 0.2f ? 0.2f : dt;
+        state->t += actualDeltaTime;
         while (state->t > 1000.0f) {
             state->t -= 1000.0f;
         }
-        state->accTime += dt;
+        state->accTime += actualDeltaTime;
         f32 updateDelta = (1.0f / 60.0f);
 
         spriteManPushTransform((sprite_transform){ .pos = gameOrigin, .scale = gameScale });
 
-        updateBubbleGame(&state->bubbleGame, input, &state->vInput, dt, platAPI, &state->memory, &scratchMemory);
+        updateVineGame(&state->vineGame, input, &state->vInput, actualDeltaTime, platAPI, &state->memory, &scratchMemory);
         //while (state->accTime > updateDelta) {
         //    updateBubbleGame(&state->bubbleGame, input, &state->vInput, updateDelta, platAPI, &state->memory, &scratchMemory);
         //    //updateGrGame(&state->grGame, input, &state->vInput, updateDelta, platAPI, &state->memory);
@@ -532,7 +424,7 @@ UPDATE_GNG_GAME(updateGNGGame) {
         basic3DMan->shouldDraw = false;
 
         //drawGrGame(&state->grGame, platAPI, &scratchMemory);
-        drawBubbleGame(&state->bubbleGame, platAPI);
+        drawVineGame(&state->vineGame, platAPI);
        
         spriteManPopMatrix();
 

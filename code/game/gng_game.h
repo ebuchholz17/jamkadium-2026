@@ -12,7 +12,8 @@
 
 #include "hitbox/hitbox.h"
 //#include "ghost_racing_game/ghost_racing_game.h"
-#include "bubble_game/bubble_game.h"
+//#include "bubble_game/bubble_game.h"
+#include "vine_game/vine_game.h"
 
 typedef struct spinning_triangle {
     f32 x;
@@ -33,7 +34,7 @@ typedef struct gng_game_state {
     virtual_input vInput;
 
     //GrGame grGame;
-    bubble_game bubbleGame;
+    vine_game vineGame;
 
     f32 accTime;
     f32 soundT;
