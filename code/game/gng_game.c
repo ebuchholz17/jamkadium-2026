@@ -152,15 +152,19 @@ void setVirtualInput (virtual_input *vInput, game_input *input, plat_api *platAP
 
 void resetInput (game_input *input, virtual_input *vInput) {
     input->pointerJustDown = false;
+    input->pointerJustUp = false;
     input->pointer2JustDown = false;
+    input->pointer2JustUp = false;
 
     input->upArrow.justPressed = false;
     input->downArrow.justPressed = false;
     input->leftArrow.justPressed = false;
     input->rightArrow.justPressed = false;
 
+    input->wKey.justPressed = false;
     input->aKey.justPressed = false;
     input->sKey.justPressed = false;
+    input->dKey.justPressed = false;
     input->zKey.justPressed = false;
     input->xKey.justPressed = false;
 

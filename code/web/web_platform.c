@@ -96,6 +96,9 @@ WASM_EXPORT void onMouseDown () {
 }
 
 WASM_EXPORT void onMouseUp () {
+    if (input.pointerDown) {
+        input.pointerJustUp = true;
+    }
     input.pointerDown = false;
 }
 
@@ -107,11 +110,20 @@ WASM_EXPORT void onMouse2Down () {
 }
 
 WASM_EXPORT void onMouse2Up () {
+    if (input.pointer2Down) {
+        input.pointer2JustUp = true;
+    }
     input.pointer2Down = false;
 }
 
 WASM_EXPORT void onLetterKeyDown (u32 letterCode) {
     switch (letterCode) {
+        case 'w': {
+            if (!input.wKey.down) {
+                input.wKey.justPressed = true;
+            }
+            input.wKey.down = true;
+        } break;
         case 'a': {
             if (!input.aKey.down) {
                 input.aKey.justPressed = true;
@@ -123,6 +135,12 @@ WASM_EXPORT void onLetterKeyDown (u32 letterCode) {
                 input.sKey.justPressed = true;
             }
             input.sKey.down = true;
+        } break;
+        case 'd': {
+            if (!input.dKey.down) {
+                input.dKey.justPressed = true;
+            }
+            input.dKey.down = true;
         } break;
         case 'z': {
             if (!input.zKey.down) {
@@ -141,11 +159,17 @@ WASM_EXPORT void onLetterKeyDown (u32 letterCode) {
 
 WASM_EXPORT void onLetterKeyUp (u32 letterCode) {
     switch (letterCode) {
+        case 'w': {
+            input.wKey.down = false;
+        } break;
         case 'a': {
             input.aKey.down = false;
         } break;
         case 's': {
             input.sKey.down = false;
+        } break;
+        case 'd': {
+            input.dKey.down = false;
         } break;
         case 'z': {
             input.zKey.down = false;

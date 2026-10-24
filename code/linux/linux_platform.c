@@ -38,6 +38,12 @@ void processSDLMessages (game_input *input) {
         switch (event.type) {
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:{
+                if (event.key.key == SDLK_W) {
+                    if (!input->wKey.down && event.key.down) {
+                        input->wKey.justPressed = true;
+                    }
+                    input->wKey.down = event.key.down;
+                }
                 if (event.key.key == SDLK_A) {
                     if (!input->aKey.down && event.key.down) {
                         input->aKey.justPressed = true;
@@ -49,6 +55,12 @@ void processSDLMessages (game_input *input) {
                         input->sKey.justPressed = true;
                     }
                     input->sKey.down = event.key.down;
+                }
+                if (event.key.key == SDLK_D) {
+                    if (!input->dKey.down && event.key.down) {
+                        input->dKey.justPressed = true;
+                    }
+                    input->dKey.down = event.key.down;
                 }
                 if (event.key.key == SDLK_Z) {
                     if (!input->zKey.down && event.key.down) {
@@ -107,9 +119,15 @@ void processSDLMessages (game_input *input) {
             } break;
             case SDL_EVENT_MOUSE_BUTTON_UP: {
                 if (event.button.button == 1) {
+                    if (input->pointerDown) {
+                        input->pointerJustUp = true;
+                    }
                     input->pointerDown = false;
                 }
                 else if (event.button.button == 3) {
+                    if (input->pointer2Down) {
+                        input->pointer2JustUp = true;
+                    }
                     input->pointer2Down = false;
                 }
             } break;

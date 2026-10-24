@@ -4,7 +4,7 @@
 #include "../gng_math.h"
 
 #define CELL_DIM 12
-#define CAMERA_SPEED 200.0f
+#define CAMERA_SPEED 300.0f
 
 typedef struct scratch_mem_marker {
     void *marker;
@@ -107,6 +107,11 @@ typedef struct vine_game {
     b32 isInitialized;
     b32 shouldReset;
     f32 gameTime;
+
+    vec2 pointerDownPos;
+    vec2 gameSpacePointerDownPos;
+    b32 dragging;
+    vec2 dragStartCameraPos;
 
     f32 cameraX;
     f32 cameraY;

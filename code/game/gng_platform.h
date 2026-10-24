@@ -144,8 +144,11 @@ typedef struct game_input {
     input_key leftArrow;
     input_key rightArrow;
 
+    input_key wKey;
     input_key aKey;
     input_key sKey;
+    input_key dKey;
+
     input_key zKey;
     input_key xKey;
 
@@ -153,8 +156,10 @@ typedef struct game_input {
 
     b32 pointerDown;
     b32 pointerJustDown;
+    b32 pointerJustUp;
     b32 pointer2Down;
     b32 pointer2JustDown;
+    b32 pointer2JustUp;
     u32 pointerX;
     u32 pointerY;
 
