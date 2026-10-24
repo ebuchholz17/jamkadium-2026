@@ -153,6 +153,8 @@ typedef struct game_input {
 
     b32 pointerDown;
     b32 pointerJustDown;
+    b32 pointer2Down;
+    b32 pointer2JustDown;
     u32 pointerX;
     u32 pointerY;
 

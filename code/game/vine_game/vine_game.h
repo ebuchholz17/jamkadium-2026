@@ -73,15 +73,17 @@ struct vine_node {
     i32 row;
     i32 col;
 
+    i32 lifeTime;
+
     i32 targetRow;
     i32 targetCol;
 
     b32 isRoot;
     b32 isHead;
 
-    vine_node *prev;
-    vine_node *next0;
-    vine_node *next1;
+    entity_id prev;
+    entity_id next0;
+    entity_id next1;
 };
 
 #define LIST_TYPE vine_node
@@ -116,8 +118,12 @@ typedef struct vine_game {
     i32 score;
 
     f32 vineSeekDelay;
+    i32 vineSplitLifeTime;
 
     vine_node_list vineNodeList;
+    i32 numTrimmers;
+
+    b32 openedCellCausedGameOver;
 } vine_game;
 
 #endif

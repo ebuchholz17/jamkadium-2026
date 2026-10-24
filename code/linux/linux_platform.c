@@ -98,10 +98,19 @@ void processSDLMessages (game_input *input) {
                     }
                     input->pointerDown = true;
                 }
+                else if (event.button.button == 3) {
+                    if (!input->pointer2Down) {
+                        input->pointer2JustDown = true;
+                    }
+                    input->pointer2Down = true;
+                }
             } break;
             case SDL_EVENT_MOUSE_BUTTON_UP: {
                 if (event.button.button == 1) {
                     input->pointerDown = false;
+                }
+                else if (event.button.button == 3) {
+                    input->pointer2Down = false;
                 }
             } break;
             case SDL_EVENT_WINDOW_RESIZED: {

@@ -7,6 +7,7 @@
 #include "../gng_virtual_input.h"
 
 #include "atan.c"
+#include <stdio.h>
 
 vine_game *vg;
 mem_arena *scratchMemory;
@@ -55,9 +56,9 @@ void setDifficulty (vine_game_difficulty difficulty) {
             vg->numBombs = 40;
         } break;
         case VINE_GAME_DIFFICULTY_HARD: {
-            vg->fieldWidth = 30;
-            vg->fieldHeight = 16;
-            vg->numBombs = 99;
+            vg->fieldWidth = 50;
+            vg->fieldHeight = 28;
+            vg->numBombs = 200;
         } break;
     }
 }
@@ -72,7 +73,9 @@ void initVineGame (vine_game *vineGame, mem_arena *memory) {
     v.id.val = vg->vineNodeList.numValues;
     vine_node_listPush(&vg->vineNodeList, v);
 
-    vg->vineSeekDelay = 1.0f;
+    vg->vineSeekDelay = 3.5f;
+    vg->vineSplitLifeTime = 15;
+    vg->numTrimmers = 20; // TODO(vg) pick up trimmers in grid
 }
 
 b32 cellIsNextToStartingCell (mine_cell *cell, mine_cell *startingCell) {
@@ -179,6 +182,11 @@ vine_node *getVineByID (entity_id id) {
         }
     }
     return 0;
+}
+
+void destroyVine (vine_node *vine) {
+    vine->active = false;
+    vine->id.gen++;
 }
 
 void sortCells (mine_cell_ptr_list *cells) {
@@ -307,7 +315,10 @@ void pathFindTargetRowColFromVineNode (i32 targetRow, i32 targetCol, vine_node *
                         continue;
                     }
 
-                    mine_cell nextMineCell = vg->cells[coords.row * vg->fieldWidth * coords.col];
+                    mine_cell nextMineCell = vg->cells[coords.row * vg->fieldWidth + coords.col];
+                    if (nextMineCell.vineID.val != 0) {
+                        printf("cell has vine\n");
+                    }
 
                     vine_node *existingVine = getVineByID(nextMineCell.vineID);
                     if (!existingVine || !existingVine->active) {
@@ -344,12 +355,63 @@ void pathFindTargetRowColFromVineNode (i32 targetRow, i32 targetCol, vine_node *
                             cell_coord_hash_mapStore(&seenPoints, node.coords, nextNode.coords.key);
                         }
                     }
+                    else {
+                        if (existingVine) {
+                            printf("inactive vine!\n");
+                        }
+                        printf("tried to step over vine\n");
+                    }
                 }
             }
         }
     }
 
     popScratchMemory(m);
+}
+
+void getAvailableNeighborCellsToVine (vine_node *vine, mine_cell **neighbors, i32 *outNumNeighbors) {
+    i32 numNeighbors = 0;
+
+    if (vine->col > 0) {
+        mine_cell *leftCell = &vg->cells[vine->row * vg->fieldWidth + vine->col - 1];
+        vine_node *leftVine = getVineByID(leftCell->vineID);
+        if (!leftVine || !leftVine->active) {
+            neighbors[numNeighbors++] = leftCell;
+        }
+    }
+    if (vine->col < vg->fieldWidth - 1) {
+        mine_cell *rightCell = &vg->cells[vine->row * vg->fieldWidth + vine->col + 1];
+        vine_node *rightVine = getVineByID(rightCell->vineID);
+        if (!rightVine || !rightVine->active) {
+            neighbors[numNeighbors++] = rightCell;
+        }
+    }
+    if (vine->row > 0) {
+        mine_cell *topCell = &vg->cells[(vine->row - 1) * vg->fieldWidth + vine->col];
+        vine_node *topVine = getVineByID(topCell->vineID);
+        if (!topVine || !topVine->active) {
+            neighbors[numNeighbors++] = topCell;
+        }
+    }
+    if (vine->row < vg->fieldHeight - 1) {
+        mine_cell *bottomCell = &vg->cells[(vine->row + 1) * vg->fieldWidth + vine->col];
+        vine_node *bottomVine = getVineByID(bottomCell->vineID);
+        if (!bottomVine || !bottomVine->active) {
+            neighbors[numNeighbors++] = bottomCell;
+        }
+    }
+
+    for (i32 i = numNeighbors - 1; i >= 0; --i) {
+        mine_cell *cell = neighbors[i];
+
+        i32 randomIndex = randomU32() % (numNeighbors);
+        mine_cell *randomCell = neighbors[randomIndex];
+
+        neighbors[randomIndex] = cell;
+        neighbors[i] = randomCell;
+    }
+
+    *outNumNeighbors = numNeighbors;
 }
 
 void determineTargetBombForVine (vine_node *vine) {
@@ -427,6 +489,7 @@ void determineTargetBombForVine (vine_node *vine) {
 
     sortCells(&cellsToSeek);
 
+    b32 foundTarget = false;
     for (i32 i = 0; i < cellsToSeek.numValues; i++) {
         mine_cell *targetCell = cellsToSeek.values[i];
         i32 nextRow;
@@ -437,83 +500,23 @@ void determineTargetBombForVine (vine_node *vine) {
         }
         vine->targetRow = targetCell->row;
         vine->targetCol = targetCell->col;
+        foundTarget = true;
         break;
     }
 
-    popScratchMemory(m);
-}
+    if (!foundTarget) {
+        mine_cell *neighbors[4];
+        i32 numNeighbors = 0;
+        getAvailableNeighborCellsToVine(vine, neighbors, &numNeighbors);
 
-
-
-void growVine (vine_node *vineNode) {
-    i32 nextRow;
-    i32 nextCol;
-    pathFindTargetRowColFromVineNode(vineNode->targetRow, vineNode->targetCol, vineNode, &nextRow, &nextCol);
-
-    if (nextRow != -1 && nextCol != -1) {
-        vineNode->isHead = false;
-
-        mine_cell *cell = &vg->cells[nextRow * vg->fieldWidth + nextCol];
-
-        vine_node *newVine = spawnNewVine();
-        newVine->row = cell->row;
-        newVine->col = cell->col;
-        newVine->isHead = true;
-        newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST;
-
-        cell->vineID = newVine->id;
-
-        if (vineNode->targetRow == newVine->row && vineNode->targetCol == newVine->col) {
-            determineTargetBombForVine(newVine);
+        if (numNeighbors > 0) {
+            vine->targetRow = neighbors[0]->row;
+            vine->targetCol = neighbors[0]->col;
         }
-        else {
-            newVine->targetRow = vineNode->targetRow;
-            newVine->targetCol = vineNode->targetCol;
-        }
-
-        newVine->seekTimer = vg->vineSeekDelay;
-
-        newVine->prev = vineNode;
-        vineNode->next0 = newVine;
     }
-}
-
-void startGameWithDifficulty (vine_game_difficulty difficulty, mem_arena *memory) {
-    setDifficulty(difficulty);
-
-    vg->cells = allocMemory(memory, sizeof(mine_cell) * vg->fieldWidth * vg->fieldHeight);
 
 
-    // add powerups (will be trimmers in this game)
-    //for (int i = numCellsLessLastRows - 1; i >= 0; --i) {
-
-    //    mine_cell *cell = &game->cells[i];
-    //    if (!cell->hasBomb) {
-    //        float roll = randomFloat();
-
-    //        float sWeight = 0.01f;
-    //        float wWeight = 0.01f;
-    //        float lWeight = 0.01f;
-    //        float healthWeight = 0.02f;
-
-    //        if (roll < sWeight) {
-    //            cell->hasSPower = true;
-    //        }
-    //        else if (roll < sWeight + wWeight) {
-    //            cell->hasWPower = true;
-    //        }
-    //        else if (roll < sWeight + wWeight + lWeight) {
-    //            cell->hasLPower = true;
-    //        }
-    //        else if (roll < sWeight + wWeight + lWeight + healthWeight) {
-    //            cell->hasExtraHealth = true;
-    //        }
-
-    //    }
-    //    int randomIndex = randomUint() % (numCellsLessLastRows);
-    //    mine_cell *randomCell = &game->cells[randomIndex];
-    //}
-
+    popScratchMemory(m);
 }
 
 void openAllNearbyZeroValueCells (mine_cell *startCell, mem_arena *tempMemory, b32 awardScore) {
@@ -562,6 +565,209 @@ void openAllNearbyZeroValueCells (mine_cell *startCell, mem_arena *tempMemory, b
     popScratchMemory(m);
 }
 
+void openCell (mine_cell *cell) {
+    cell->open = true;
+    vg->score += 10;
+
+    if (cell->hasBomb) {
+        vg->openedCellCausedGameOver = true;
+    }
+    else if (cell->numAdjBombs == 0) {
+        openAllNearbyZeroValueCells(cell, scratchMemory, true);
+    }
+}
+
+void openCellWithVine (mine_cell *cell, vine_node *vine) {
+    if (cell->flagged && cell->hasBomb) {
+        // TODO(vg) make flower
+    }
+    else {
+        openCell(cell);
+    }
+}
+
+void growVine (vine_node *vineNode) {
+    i32 nextRow;
+    i32 nextCol;
+    pathFindTargetRowColFromVineNode(vineNode->targetRow, vineNode->targetCol, vineNode, &nextRow, &nextCol);
+
+    if (nextRow != -1 && nextCol != -1) {
+        vineNode->isHead = false;
+
+        mine_cell *cell = &vg->cells[nextRow * vg->fieldWidth + nextCol];
+
+        if (vineNode->lifeTime >= vg->vineSplitLifeTime) {
+            mine_cell *neighbors[4];
+            i32 numNeighbors = 0;
+            getAvailableNeighborCellsToVine(vineNode, neighbors, &numNeighbors);
+
+            mine_cell *cellsToSpawnVine[2];
+            i32 numCellsToSpawnVinesIn = 0;
+            for (i32 i = 0; i < numNeighbors; i++) {
+                mine_cell *neighbor = neighbors[i];
+                if (neighbor != cell) {
+                    cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
+                }
+                if (numCellsToSpawnVinesIn == 2) {
+                    break; // probably unnecessary, because the front cell and prev cell are
+                           // excluded
+                }
+            }
+
+            // loosen restriction to not grow forward if couldn't find 2 spots
+            if (numCellsToSpawnVinesIn != 2) {
+                numCellsToSpawnVinesIn = 0;
+                for (i32 i = 0; i < numNeighbors; i++) {
+                    mine_cell *neighbor = neighbors[i];
+                    cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
+                    if (numCellsToSpawnVinesIn == 2) {
+                        break; // probably unnecessary, because the front cell and prev cell are
+                               // excluded
+                    }
+                }
+            }
+
+            vineNode->isRoot = true;
+
+            for (i32 i = 0; i < numCellsToSpawnVinesIn; i++) {
+                mine_cell *neighbor = cellsToSpawnVine[i];
+
+                vine_node *newVine = spawnNewVine();
+                newVine->row = neighbor->row;
+                newVine->col = neighbor->col;
+                newVine->isHead = true;
+                newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST; // TODO(vg) make orthoganal
+                                                                        // to prev direction
+                newVine->lifeTime = 0;
+
+                neighbor->vineID = newVine->id;
+
+                determineTargetBombForVine(newVine);
+
+                newVine->seekTimer = vg->vineSeekDelay;
+
+                newVine->prev = vineNode->id;
+                vine_node *nextVine0 = getVineByID(vineNode->next0);
+                if (nextVine0 == NULL || !nextVine0->active) {
+                    vineNode->next0 = newVine->id;
+                }
+                else {
+                    vineNode->next1 = newVine->id;
+                }
+
+                openCellWithVine(neighbor, newVine);
+            }
+
+        }
+        else {
+            vine_node *newVine = spawnNewVine();
+            newVine->row = cell->row;
+            newVine->col = cell->col;
+            newVine->isHead = true;
+            newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST;
+            newVine->lifeTime = vineNode->lifeTime + 1;
+
+            cell->vineID = newVine->id;
+
+            if (vineNode->targetRow == newVine->row && vineNode->targetCol == newVine->col) {
+                determineTargetBombForVine(newVine);
+            }
+            else {
+                newVine->targetRow = vineNode->targetRow;
+                newVine->targetCol = vineNode->targetCol;
+            }
+
+            newVine->seekTimer = vg->vineSeekDelay;
+
+            newVine->prev = vineNode->id;
+            vineNode->next0 = newVine->id;
+
+            openCellWithVine(cell, newVine);
+        }
+    }
+    else {
+        // TODO(vg) better tracking of others vines targets, etc.
+        determineTargetBombForVine(vineNode);
+    }
+}
+
+void startGameWithDifficulty (vine_game_difficulty difficulty, mem_arena *memory) {
+    setDifficulty(difficulty);
+
+    vg->cells = allocMemory(memory, sizeof(mine_cell) * vg->fieldWidth * vg->fieldHeight);
+
+
+    // add powerups (will be trimmers in this game)
+    //for (int i = numCellsLessLastRows - 1; i >= 0; --i) {
+
+    //    mine_cell *cell = &game->cells[i];
+    //    if (!cell->hasBomb) {
+    //        float roll = randomFloat();
+
+    //        float sWeight = 0.01f;
+    //        float wWeight = 0.01f;
+    //        float lWeight = 0.01f;
+    //        float healthWeight = 0.02f;
+
+    //        if (roll < sWeight) {
+    //            cell->hasSPower = true;
+    //        }
+    //        else if (roll < sWeight + wWeight) {
+    //            cell->hasWPower = true;
+    //        }
+    //        else if (roll < sWeight + wWeight + lWeight) {
+    //            cell->hasLPower = true;
+    //        }
+    //        else if (roll < sWeight + wWeight + lWeight + healthWeight) {
+    //            cell->hasExtraHealth = true;
+    //        }
+
+    //    }
+    //    int randomIndex = randomUint() % (numCellsLessLastRows);
+    //    mine_cell *randomCell = &game->cells[randomIndex];
+    //}
+
+}
+
+
+void trimVine (vine_node *vine) {
+    if (!vine->isRoot) {
+        vine_node *next0 = getVineByID(vine->next0);
+        vine_node *next1 = getVineByID(vine->next1);
+
+        destroyVine(vine);
+
+        if (next0 && next0->active) {
+            trimVine(next0);
+        }
+        if (next1 && next1->active) {
+            trimVine(next1);
+        }
+    }
+}
+
+void useTrimmersOnVine (vine_node *vine) {
+    if (!vine->isRoot) {
+        vg->numTrimmers--;
+
+        vine_node *next0 = getVineByID(vine->next0);
+        vine_node *next1 = getVineByID(vine->next1);
+
+        if (next0 && next0->active) {
+            trimVine(next0);
+        }
+        if (next1 && next1->active) {
+            trimVine(next1);
+        }
+
+        vine->seekTimer = vg->vineSeekDelay;
+        vine->lifeTime = vg->vineSplitLifeTime;
+
+        growVine(vine);
+    }
+}
+
+
 void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input, f32 dt) {
     // TODO(vg): pan screen
 
@@ -573,7 +779,6 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     i32 mouseRow = (i32)(localPointerPos.y / CELL_DIM);
     i32 mouseCol = (i32)(localPointerPos.x / CELL_DIM);
 
-    b32 gameOver = false;
 
     if (mouseRow >= 0 && mouseRow < vg->fieldHeight && mouseCol >= 0 && mouseCol < vg->fieldWidth) {
         if (input->pointerJustDown) {
@@ -592,6 +797,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                         vine->isRoot = true;
                         vine->isHead = true;
                         vine->bombStrat = VINE_TARGET_BOMB_STRATEGY_RANDOM_DIR;
+                        vine->lifeTime = 0;
 
                         cell->vineID = vine->id;
 
@@ -601,18 +807,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                         openAllNearbyZeroValueCells(cell, tempMemory, false);
                     }
                     else {
-                        // Game over!
-                        if (cell->hasBomb) {
-                            gameOver = true;
-                            //playSound("wormhole_revealed", gameSounds, assets);
-                        }
-                        else {
-                            //playSound("click", gameSounds, assets);
-                            vg->score += 10;
-                            if (cell->numAdjBombs == 0) {
-                                openAllNearbyZeroValueCells(cell, tempMemory, true);
-                            }
-                        }
+                        openCell(cell);
                     }
                 }
             }
@@ -658,16 +853,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
 
                                 mine_cell *neighbor = &vg->cells[row * vg->fieldWidth + col];
                                 if (!neighbor->open && !neighbor->flagged) {
-                                    neighbor->open = true;
-                                    vg->score += 10;
-
-                                    if (neighbor->hasBomb) {
-                                        // Game Over! TODO(vg)
-                                        gameOver = true;
-                                    }
-                                    else if (neighbor->numAdjBombs == 0) {
-                                        openAllNearbyZeroValueCells(neighbor, tempMemory, true);
-                                    }
+                                    openCell(neighbor);
                                 }
                             }
                         }
@@ -676,9 +862,21 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
             }
         }
         // TODO(vg) right click
-        else if (input->aKey.justPressed) {
+        else if (input->pointer2JustDown) {
+
             mine_cell *cell = &vg->cells[mouseRow * vg->fieldWidth + mouseCol];
-            if (!cell->open) {
+
+            b32 cellHasVine = false;
+            vine_node *cellsVine = getVineByID(cell->vineID);
+            if (cellsVine) {
+                cellHasVine = true;
+            }
+
+            if (cellHasVine && vg->numTrimmers > 0) {
+                useTrimmersOnVine(cellsVine);
+                cellsVine = NULL;
+            }
+            else if (!cell->open) {
                 cell->flagged = !cell->flagged;
                 //playSound("click", gameSounds, assets);
             }
@@ -696,11 +894,11 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
         }
     }
 
-    if (gameOver) {
-        // TODO(vg) game over state
-        vg->state = VINE_GAME_STATE_TITLE_SCREEN;
+    if (vg->openedCellCausedGameOver) {
+        vg->state = VINE_GAME_STATE_GAME_OVER_SCREEN;
     }
 }
+
 
 void updateVineGame (vine_game *bg, game_input *input, 
                        virtual_input *vInput, f32 dt, plat_api platAPI, mem_arena *memory,
@@ -809,7 +1007,15 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             sprite vineSprite = defaultSprite();
             vineSprite.atlasKey = "game_atlas";
             vineSprite.frameKey = "sheep";
-            vineSprite.tint = 0x0000ff;
+            if (vine->isRoot) {
+                vineSprite.tint = 0x990066;
+            }
+            else if (vine->isHead) {
+                vineSprite.tint = 0x00ffff;
+            }
+            else {
+                vineSprite.tint = 0x0000ff;
+            }
             vineSprite.scale = 0.75f;
             vineSprite.anchor.x = 0.5f;
             vineSprite.anchor.y = 0.5f;
@@ -821,7 +1027,7 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             vineSprite.tint = 0xff0000;
             vineSprite.pos.x = (float)(vine->targetCol * CELL_DIM) + CELL_DIM * 0.5f;
             vineSprite.pos.y = (float)(vine->targetRow * CELL_DIM) + CELL_DIM * 0.5f;
-            spriteManAddSprite(vineSprite);
+            //spriteManAddSprite(vineSprite);
         }
     }
 
@@ -854,6 +1060,15 @@ void drawVineGame (vine_game *vg, plat_api platAPI) {
             drawVineGameGameplay(vg, platAPI);
         } break;
         case VINE_GAME_STATE_GAME_OVER_SCREEN: {
+            drawVineGameGameplay(vg, platAPI);
+            sprite_text labelText = {
+                .text = "game over",
+                .fontKey = "font",
+                .x = 320.0f,
+                .y = 160.0f
+            };
+            centerText(&labelText);
+            spriteManAddText(labelText);
 
         } break;
         case VINE_GAME_STATE_WIN_SCREEN: {
