@@ -96,6 +96,9 @@ struct vine_node {
     b32 wasTrimmed;
     f32 trimTimer;
     f32 deadTimer;
+
+    b32 isEnraged;
+    i32 enrageCellCount;
 };
 
 #define LIST_TYPE vine_node

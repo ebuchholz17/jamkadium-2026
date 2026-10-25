@@ -614,12 +614,25 @@ void openCell (mine_cell *cell) {
 }
 
 void openCellWithVine (mine_cell *cell, vine_node *vine) {
-    if (cell->flagged && cell->hasBomb) {
-        // TODO(vg) make flower
-        vine->hasFlower = true;
-        vine->flowerAppearTimer = 0.0f;
-        vine->flowerSpin = 0.0f;
-        vg->score += 200;
+    if (cell->flagged) {
+        if (cell->hasBomb) {
+            if (!vine->isEnraged) {
+                // TODO(vg) make flower
+                vine->hasFlower = true;
+                vine->flowerAppearTimer = 0.0f;
+                vine->flowerSpin = 0.0f;
+                vg->score += 200;
+            }
+            else {
+                openCell(cell);
+            }
+        }
+        else {
+            vine->isEnraged = true;
+            vine->enrageCellCount = 3;
+            // TODO(vg) SFX
+            openCell(cell);
+        }
     }
     else {
         openCell(cell);
@@ -672,10 +685,20 @@ void splitVine (vine_node *vineNode, mine_cell *cellAhead) {
         newVine->lifeTime = 0;
 
         neighbor->vineID = newVine->id;
+        if (vineNode->isEnraged && vineNode->enrageCellCount > 1) {
+            newVine->isEnraged = true;
+            newVine->enrageCellCount = vineNode->enrageCellCount - 1;
+            vineNode->isEnraged = false;
+        }
 
         determineTargetBombForVine(newVine);
 
+        openCellWithVine(neighbor, newVine);
+
         newVine->seekTimer = vg->vineSeekDelay;
+        if (newVine->isEnraged) {
+                newVine->seekTimer /= 5.0f;
+        }
 
         newVine->prev = vineNode->id;
         vine_node *nextVine0 = getVineByID(vineNode->next0);
@@ -686,7 +709,6 @@ void splitVine (vine_node *vineNode, mine_cell *cellAhead) {
             vineNode->next1 = newVine->id;
         }
 
-        openCellWithVine(neighbor, newVine);
     }
 
 }
@@ -722,12 +744,22 @@ void growVine (vine_node *vineNode) {
                 newVine->targetCol = vineNode->targetCol;
             }
 
+            if (vineNode->isEnraged && vineNode->enrageCellCount > 1) {
+                newVine->isEnraged = true;
+                newVine->enrageCellCount = vineNode->enrageCellCount - 1;
+                vineNode->isEnraged = false;
+            }
+
+            openCellWithVine(cell, newVine);
+
             newVine->seekTimer = vg->vineSeekDelay;
+            if (newVine->isEnraged) {
+                newVine->seekTimer /= 5.0f;
+            }
 
             newVine->prev = vineNode->id;
             vineNode->next0 = newVine->id;
 
-            openCellWithVine(cell, newVine);
         }
     }
     else {
@@ -1128,13 +1160,13 @@ void updateVineGame (vine_game *bg, game_input *input,
         } break;
         case VINE_GAME_STATE_GAMEPLAY: {
             updateGameplay(memory, sm, input, dt);
+        vg->gameTime += dt;
         } break;
         case VINE_GAME_STATE_GAME_OVER_SCREEN: {
         } break;
         case VINE_GAME_STATE_WIN_SCREEN: {
         } break;
     }
-    vg->gameTime += dt;
 
 }
 
@@ -1344,6 +1376,10 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             vineSprite.pos.y = (float)(vine->row * CELL_DIM) + CELL_DIM * 0.5f;
             vineSprite.anchor.x = 0.5f;
             vineSprite.anchor.y = 0.5f;
+            
+            if (vine->isEnraged) {
+                vineSprite.tint = 0xff5555;
+            }
 
             if (vine->isRoot) {
                 vineSprite.frameKey = "vine_root";
