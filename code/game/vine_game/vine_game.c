@@ -69,7 +69,7 @@ void initVineGame (vine_game *vineGame, mem_arena *memory) {
     vg = vineGame;
     vg->isInitialized = true;
     vg->vineNodeList = vine_node_listInit(memory, 2000);
-    vg->cameraZoom = 2.0f; // TODO(vg) change per difficulty?
+    vg->cameraZoom = 1.0f; // TODO(vg) change per difficulty?
 
     // Put vine in the 0 slot, not to be used
     vine_node v = {};
@@ -909,7 +909,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                             determineTargetBombForVine(vine);
                             vine->seekTimer = vg->vineSeekDelay;
 
-                            openAllNearbyZeroValueCells(cell, tempMemory, false);
+                            openAllNearbyZeroValueCells(cell, tempMemory, true);
                             spawnTrimmers();
                         }
                         else {
@@ -1062,6 +1062,99 @@ void centerText (sprite_text *text) {
     text->y -= 4.0f;
 }
 
+i32 getVineRelativePositionIndexToNeighbor (vine_node *vine, vine_node *neighbor) {
+    i32 xDiff = vine->col - neighbor->col;
+    i32 yDiff = vine->row - neighbor->row;
+
+    if (xDiff == 1) {
+        return 0;
+    }
+    else if (xDiff == -1) {
+        return 2;
+    }
+    else if (yDiff == 1) {
+        return 1;
+    }
+    else if (yDiff == -1) {
+        return 3;
+    }
+    return 0;
+}
+
+void setVineSpriteFrameAndAngleForRelativePositions (sprite *vineSprite, i32 prevPos, i32 nextPos) {
+    switch (prevPos) {
+        case 0: {
+            switch (nextPos) {
+                case 0: {
+                } break;
+                case 1: {
+                    vineSprite->rotation = 0.25f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 2: {
+                    vineSprite->frameKey = "vine_straight";
+                } break;
+                case 3: {
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+            }
+        } break;
+        case 1: {
+            switch (nextPos) {
+                case 0: {
+                    vineSprite->rotation = 0.25f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 1: {
+                } break;
+                case 2: {
+                    vineSprite->rotation = 0.5f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 3: {
+                    vineSprite->rotation = 0.25f;
+                    vineSprite->frameKey = "vine_straight";
+                } break;
+            }
+        } break;
+        case 2: {
+            switch (nextPos) {
+                case 0: {
+                    vineSprite->rotation = 0.75f;
+                    vineSprite->frameKey = "vine_straight";
+                } break;
+                case 1: {
+                    vineSprite->rotation = 0.5f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 2: {
+                } break;
+                case 3: {
+                    vineSprite->rotation = 0.75f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+            }
+        } break;
+        case 3: {
+            switch (nextPos) {
+                case 0: {
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 1: {
+                    vineSprite->rotation = 0.25f;
+                    vineSprite->frameKey = "vine_straight";
+                } break;
+                case 2: {
+                    vineSprite->rotation = 0.75f;
+                    vineSprite->frameKey = "vine_corner";
+                } break;
+                case 3: {
+                } break;
+            }
+        } break;
+    }
+}
+
 void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     // TODO(vg) panning
     spriteManPushTransform((sprite_transform){
@@ -1138,7 +1231,7 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
                 sprite trimmersSprite = defaultSprite();
                 trimmersSprite.atlasKey = "game_atlas";
                 trimmersSprite.frameKey = "trimmers";
-                trimmersSprite.scale = 0.5f;
+                trimmersSprite.scale = 1.15f;
                 trimmersSprite.anchor.x = 0.5f;
                 trimmersSprite.anchor.y = 0.5f;
                 trimmersSprite.pos.x = (float)(cell->col * CELL_DIM) + CELL_DIM * 0.5f;
@@ -1153,28 +1246,93 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
         if (vine->active) {
             sprite vineSprite = defaultSprite();
             vineSprite.atlasKey = "game_atlas";
-            vineSprite.frameKey = "sheep";
-            if (vine->isRoot) {
-                vineSprite.tint = 0x990066;
-            }
-            else if (vine->isHead) {
-                vineSprite.tint = 0x00ffff;
-            }
-            else {
-                vineSprite.tint = 0x0000ff;
-            }
-            vineSprite.scale = 0.75f;
-            vineSprite.anchor.x = 0.5f;
-            vineSprite.anchor.y = 0.5f;
+
             vineSprite.pos.x = (float)(vine->col * CELL_DIM) + CELL_DIM * 0.5f;
             vineSprite.pos.y = (float)(vine->row * CELL_DIM) + CELL_DIM * 0.5f;
+            vineSprite.anchor.x = 0.5f;
+            vineSprite.anchor.y = 0.5f;
+
+            if (vine->isRoot) {
+                vineSprite.frameKey = "vine_root";
+            }
+            else if (vine->isHead) {
+                vineSprite.frameKey = "vine_head_2";
+                vine_node *neighbor = getVineByID(vine->prev);
+                if (neighbor) {
+                    i32 index = getVineRelativePositionIndexToNeighbor(vine, neighbor);
+                    switch (index) {
+                    case 0:
+                        vineSprite.rotation = 0.25f;
+                        break;
+                    case 1:
+                        vineSprite.rotation = 0.5f;
+                        break;
+                    case 2:
+                        vineSprite.rotation = 0.75f;
+                        break;
+                    case 3:
+                        vineSprite.rotation = 0.0f;
+                        break;
+                    }
+                }
+            }
+            else {
+                vine_node *prev = getVineByID(vine->prev);
+                vine_node *next = getVineByID(vine->next0);
+                if (prev && next) {
+                    i32 prevIndex = getVineRelativePositionIndexToNeighbor(vine, prev);
+                    i32 nextIndex = getVineRelativePositionIndexToNeighbor(vine, next);
+                    setVineSpriteFrameAndAngleForRelativePositions(&vineSprite, prevIndex, nextIndex);
+                }
+            }
             spriteManAddSprite(vineSprite);
 
             // debug vine targets
-            vineSprite.tint = 0xff0000;
-            vineSprite.pos.x = (float)(vine->targetCol * CELL_DIM) + CELL_DIM * 0.5f;
-            vineSprite.pos.y = (float)(vine->targetRow * CELL_DIM) + CELL_DIM * 0.5f;
+            //vineSprite.tint = 0xff0000;
+            //vineSprite.pos.x = (float)(vine->targetCol * CELL_DIM);
+            //vineSprite.pos.y = (float)(vine->targetRow * CELL_DIM);
             //spriteManAddSprite(vineSprite);
+        }
+    }
+
+    spriteManPopMatrix();
+
+    // minimap
+    spriteManPushTransform((sprite_transform){
+        .pos = { .x = 0, .y = 300.0f },
+        .scale = 1.0f / 8.0f
+    });
+
+    for (int i = 0; i < vg->fieldHeight; ++i) {
+        for (int j = 0; j < vg->fieldWidth; ++j) {
+            mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+            vine_node *vine = getVineByID(cell->vineID);
+
+            sprite boxSprite = defaultSprite();
+            boxSprite.textureKey = "minimap_box";
+            boxSprite.scale = 1.0f;
+
+            if (vine && vine->active) {
+                boxSprite.tint = 0x0000ff;
+            }
+            else {
+                if (!cell->open) {
+                    if (cell->flagged) {
+                        boxSprite.tint = 0xff0000;
+                    }
+                    else {
+                        boxSprite.tint = 0xffffff;
+                    }
+                }
+                else {
+                    boxSprite.tint = 0x000000;
+                }
+            }
+
+            boxSprite.pos.x = (float)(cell->col * 16.0f);
+            boxSprite.pos.y = (float)(cell->row * 16.0f);
+
+            spriteManAddSprite(boxSprite);
         }
     }
 

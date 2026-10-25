@@ -275,6 +275,13 @@ UPDATE_GNG_GAME(updateGNGGame) {
             .loaded = false,
             .key = "font"
         });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "minimap_box",
+            .path = "assets/minimap_box.bmp",
+            .type = ASSET_TO_LOAD_TYPE_BITMAP,
+            .loaded = false,
+            .key = "minimap_box"
+        });
 
         for (u32 assetIndex = 0; assetIndex < assetList->numValues; ++assetIndex) {
             asset_to_load *asset = &assetList->values[assetIndex];
@@ -404,9 +411,9 @@ UPDATE_GNG_GAME(updateGNGGame) {
             initVineGame(&state->vineGame, &state->memory);
         }
         
-        if (platAPI.hasTouchControls) {
-            setVirtualInput(&state->vInput, input, &platAPI);
-        }
+        //if (platAPI.hasTouchControls) {
+        //    setVirtualInput(&state->vInput, input, &platAPI);
+        //}
 
         f32 actualDeltaTime = dt > 0.2f ? 0.2f : dt;
         state->t += actualDeltaTime;
@@ -433,96 +440,96 @@ UPDATE_GNG_GAME(updateGNGGame) {
        
         spriteManPopMatrix();
 
-        if (platAPI.hasTouchControls) {
+        //if (platAPI.hasTouchControls) {
 
-            virtual_input *vInput = &state->vInput;
-            sprite testButtonSprite = defaultSprite();
-            testButtonSprite.atlasKey = "game_atlas";
-            testButtonSprite.scale = 1.0f;
-            testButtonSprite.alpha = 0.5f;
+        //    virtual_input *vInput = &state->vInput;
+        //    sprite testButtonSprite = defaultSprite();
+        //    testButtonSprite.atlasKey = "game_atlas";
+        //    testButtonSprite.scale = 1.0f;
+        //    testButtonSprite.alpha = 0.5f;
 
-            if (vInput->dPadUp.button.down) {
-                testButtonSprite.frameKey = "dpad_up_down";
-            }
-            else {
-                testButtonSprite.frameKey = "dpad_up_up";
-            }
-            testButtonSprite.pos.x = vInput->dPadUp.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->dPadUp.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
-            
-            if (vInput->dPadDown.button.down) {
-                testButtonSprite.frameKey = "dpad_down_down";
-            }
-            else {
-                testButtonSprite.frameKey = "dpad_down_up";
-            }
-            testButtonSprite.pos.x = vInput->dPadDown.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->dPadDown.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->dPadUp.button.down) {
+        //        testButtonSprite.frameKey = "dpad_up_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "dpad_up_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->dPadUp.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->dPadUp.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
+        //    
+        //    if (vInput->dPadDown.button.down) {
+        //        testButtonSprite.frameKey = "dpad_down_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "dpad_down_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->dPadDown.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->dPadDown.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
-            if (vInput->dPadLeft.button.down) {
-                testButtonSprite.frameKey = "dpad_left_down";
-            }
-            else {
-                testButtonSprite.frameKey = "dpad_left_up";
-            }
-            testButtonSprite.pos.x = vInput->dPadLeft.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->dPadLeft.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->dPadLeft.button.down) {
+        //        testButtonSprite.frameKey = "dpad_left_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "dpad_left_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->dPadLeft.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->dPadLeft.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
-            if (vInput->dPadRight.button.down) {
-                testButtonSprite.frameKey = "dpad_right_down";
-            }
-            else {
-                testButtonSprite.frameKey = "dpad_right_up";
-            }
-            testButtonSprite.pos.x = vInput->dPadRight.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->dPadRight.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->dPadRight.button.down) {
+        //        testButtonSprite.frameKey = "dpad_right_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "dpad_right_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->dPadRight.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->dPadRight.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
-            if (vInput->topButton.button.down) {
-                testButtonSprite.frameKey = "face_button_down";
-            }
-            else {
-                testButtonSprite.frameKey = "face_button_up";
-            }
-            testButtonSprite.pos.x = vInput->topButton.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->topButton.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
-            
-            if (vInput->bottomButton.button.down) {
-                testButtonSprite.frameKey = "face_button_down";
-            }
-            else {
-                testButtonSprite.frameKey = "face_button_up";
-            }
-            testButtonSprite.pos.x = vInput->bottomButton.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->bottomButton.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->topButton.button.down) {
+        //        testButtonSprite.frameKey = "face_button_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "face_button_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->topButton.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->topButton.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
+        //    
+        //    if (vInput->bottomButton.button.down) {
+        //        testButtonSprite.frameKey = "face_button_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "face_button_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->bottomButton.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->bottomButton.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
-            if (vInput->leftButton.button.down) {
-                testButtonSprite.frameKey = "face_button_down";
-            }
-            else {
-                testButtonSprite.frameKey = "face_button_up";
-            }
-            testButtonSprite.pos.x = vInput->leftButton.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->leftButton.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->leftButton.button.down) {
+        //        testButtonSprite.frameKey = "face_button_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "face_button_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->leftButton.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->leftButton.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
-            if (vInput->rightButton.button.down) {
-                testButtonSprite.frameKey = "face_button_down";
-            }
-            else {
-                testButtonSprite.frameKey = "face_button_up";
-            }
-            testButtonSprite.pos.x = vInput->rightButton.boundingBox.min.x;
-            testButtonSprite.pos.y = vInput->rightButton.boundingBox.min.y;
-            spriteManAddSprite(testButtonSprite);
+        //    if (vInput->rightButton.button.down) {
+        //        testButtonSprite.frameKey = "face_button_down";
+        //    }
+        //    else {
+        //        testButtonSprite.frameKey = "face_button_up";
+        //    }
+        //    testButtonSprite.pos.x = vInput->rightButton.boundingBox.min.x;
+        //    testButtonSprite.pos.y = vInput->rightButton.boundingBox.min.y;
+        //    spriteManAddSprite(testButtonSprite);
 
 
-        }
+        //}
     }
 
     if (basic3DMan->shouldDraw) {

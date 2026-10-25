@@ -3,7 +3,7 @@
 
 #include "../gng_math.h"
 
-#define CELL_DIM 12
+#define CELL_DIM 24
 #define CAMERA_SPEED 300.0f
 
 typedef struct scratch_mem_marker {
