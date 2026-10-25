@@ -598,6 +598,10 @@ void openAllNearbyZeroValueCells (mine_cell *startCell, mem_arena *tempMemory, b
 }
 
 void openCell (mine_cell *cell) {
+    if (cell->open) {
+        return;
+    }
+
     cell->open = true;
     vg->score += 10;
 
@@ -615,10 +619,76 @@ void openCellWithVine (mine_cell *cell, vine_node *vine) {
         vine->hasFlower = true;
         vine->flowerAppearTimer = 0.0f;
         vine->flowerSpin = 0.0f;
+        vg->score += 200;
     }
     else {
         openCell(cell);
     }
+}
+
+void splitVine (vine_node *vineNode, mine_cell *cellAhead) {
+    vineNode->isHead = false;
+    mine_cell *neighbors[4];
+    i32 numNeighbors = 0;
+    getAvailableNeighborCellsToVine(vineNode, neighbors, &numNeighbors);
+
+    mine_cell *cellsToSpawnVine[2];
+    i32 numCellsToSpawnVinesIn = 0;
+    for (i32 i = 0; i < numNeighbors; i++) {
+        mine_cell *neighbor = neighbors[i];
+        if (neighbor != cellAhead) {
+            cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
+        }
+        if (numCellsToSpawnVinesIn == 2) {
+            break; // probably unnecessary, because the front cell and prev cell are
+                   // excluded
+        }
+    }
+
+    // loosen restriction to not grow forward if couldn't find 2 spots
+    if (numCellsToSpawnVinesIn != 2) {
+        numCellsToSpawnVinesIn = 0;
+        for (i32 i = 0; i < numNeighbors; i++) {
+            mine_cell *neighbor = neighbors[i];
+            cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
+            if (numCellsToSpawnVinesIn == 2) {
+                break; // probably unnecessary, because the front cell and prev cell are
+                       // excluded
+            }
+        }
+    }
+
+    vineNode->isRoot = true;
+
+    for (i32 i = 0; i < numCellsToSpawnVinesIn; i++) {
+        mine_cell *neighbor = cellsToSpawnVine[i];
+
+        vine_node *newVine = spawnNewVine();
+        newVine->row = neighbor->row;
+        newVine->col = neighbor->col;
+        newVine->isHead = true;
+        newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST; // TODO(vg) make orthoganal
+                                                                // to prev direction
+        newVine->lifeTime = 0;
+
+        neighbor->vineID = newVine->id;
+
+        determineTargetBombForVine(newVine);
+
+        newVine->seekTimer = vg->vineSeekDelay;
+
+        newVine->prev = vineNode->id;
+        vine_node *nextVine0 = getVineByID(vineNode->next0);
+        if (nextVine0 == 0 || !nextVine0->active) {
+            vineNode->next0 = newVine->id;
+        }
+        else {
+            vineNode->next1 = newVine->id;
+        }
+
+        openCellWithVine(neighbor, newVine);
+    }
+
 }
 
 void growVine (vine_node *vineNode) {
@@ -632,67 +702,7 @@ void growVine (vine_node *vineNode) {
         mine_cell *cell = &vg->cells[nextRow * vg->fieldWidth + nextCol];
 
         if (vineNode->lifeTime >= vg->vineSplitLifeTime) {
-            mine_cell *neighbors[4];
-            i32 numNeighbors = 0;
-            getAvailableNeighborCellsToVine(vineNode, neighbors, &numNeighbors);
-
-            mine_cell *cellsToSpawnVine[2];
-            i32 numCellsToSpawnVinesIn = 0;
-            for (i32 i = 0; i < numNeighbors; i++) {
-                mine_cell *neighbor = neighbors[i];
-                if (neighbor != cell) {
-                    cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
-                }
-                if (numCellsToSpawnVinesIn == 2) {
-                    break; // probably unnecessary, because the front cell and prev cell are
-                           // excluded
-                }
-            }
-
-            // loosen restriction to not grow forward if couldn't find 2 spots
-            if (numCellsToSpawnVinesIn != 2) {
-                numCellsToSpawnVinesIn = 0;
-                for (i32 i = 0; i < numNeighbors; i++) {
-                    mine_cell *neighbor = neighbors[i];
-                    cellsToSpawnVine[numCellsToSpawnVinesIn++] = neighbor;
-                    if (numCellsToSpawnVinesIn == 2) {
-                        break; // probably unnecessary, because the front cell and prev cell are
-                               // excluded
-                    }
-                }
-            }
-
-            vineNode->isRoot = true;
-
-            for (i32 i = 0; i < numCellsToSpawnVinesIn; i++) {
-                mine_cell *neighbor = cellsToSpawnVine[i];
-
-                vine_node *newVine = spawnNewVine();
-                newVine->row = neighbor->row;
-                newVine->col = neighbor->col;
-                newVine->isHead = true;
-                newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST; // TODO(vg) make orthoganal
-                                                                        // to prev direction
-                newVine->lifeTime = 0;
-
-                neighbor->vineID = newVine->id;
-
-                determineTargetBombForVine(newVine);
-
-                newVine->seekTimer = vg->vineSeekDelay;
-
-                newVine->prev = vineNode->id;
-                vine_node *nextVine0 = getVineByID(vineNode->next0);
-                if (nextVine0 == 0 || !nextVine0->active) {
-                    vineNode->next0 = newVine->id;
-                }
-                else {
-                    vineNode->next1 = newVine->id;
-                }
-
-                openCellWithVine(neighbor, newVine);
-            }
-
+            splitVine(vineNode, cell);
         }
         else {
             vine_node *newVine = spawnNewVine();
@@ -772,18 +782,26 @@ void startGameWithDifficulty (vine_game_difficulty difficulty, mem_arena *memory
 }
 
 
-void trimVine (vine_node *vine) {
+void trimVine (vine_node *vine, i32 depth) {
     if (!vine->isRoot) {
         vine_node *next0 = getVineByID(vine->next0);
         vine_node *next1 = getVineByID(vine->next1);
 
-        destroyVine(vine);
+        vine->wasTrimmed = true;
+        vine->trimTimer = 0.04f * depth;
+        vine->deadTimer = vine->trimTimer + 1.0f;
+
+        if (vine->hasFlower) {
+            vine->hasFlower = false;
+            vg->score -= 200;
+        }
+        //destroyVine(vine);
 
         if (next0 && next0->active) {
-            trimVine(next0);
+            trimVine(next0, depth + 1);
         }
         if (next1 && next1->active) {
-            trimVine(next1);
+            trimVine(next1, depth + 1);
         }
     }
 }
@@ -792,20 +810,30 @@ void useTrimmersOnVine (vine_node *vine) {
     if (!vine->isRoot) {
         vg->numTrimmers--;
 
+        if (vine->hasFlower) {
+            vine->hasFlower = false;
+            vg->score -= 200;
+        }
+
         vine_node *next0 = getVineByID(vine->next0);
         vine_node *next1 = getVineByID(vine->next1);
 
         if (next0 && next0->active) {
-            trimVine(next0);
+            trimVine(next0, 1);
         }
         if (next1 && next1->active) {
-            trimVine(next1);
+            trimVine(next1, 1);
         }
 
         vine->seekTimer = vg->vineSeekDelay;
         vine->lifeTime = vg->vineSplitLifeTime;
 
-        growVine(vine);
+
+        mine_cell *nextCell = 0;
+        if (next0) {
+            nextCell = &vg->cells[next0->row * vg->fieldWidth + next0->col];
+        }
+        splitVine(vine, nextCell);
     }
 }
 
@@ -1039,7 +1067,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     // grow vines
     for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
         vine_node *vine = &vg->vineNodeList.values[i];
-        if (vine->active && vine->isHead) {
+        if (vine->active && vine->isHead && !vine->wasTrimmed) {
             vine->headFrameTimer += dt;
             if (vine->headFrameTimer >= 0.083f) {
                 vine->headFrame++;
@@ -1061,6 +1089,14 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                 vine->flowerAppearTimer = 1.0f;
             }
             vine->flowerSpin += dt * 0.1f;
+        }
+
+        if (vine->wasTrimmed) {
+            vine->trimTimer -= dt;
+            vine->deadTimer -= dt;
+            if (vine->deadTimer <= 0.0f) {
+                destroyVine(vine);
+            }
         }
 
     }
@@ -1312,6 +1348,9 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             if (vine->isRoot) {
                 vineSprite.frameKey = "vine_root";
             }
+            else if (vine->wasTrimmed && vine->trimTimer <= 0.0f) {
+                vineSprite.frameKey = "leaves";
+            }
             else if (vine->isHead) {
                 switch (vine->headFrame) {
                 case 0: 
@@ -1352,7 +1391,9 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
                     setVineSpriteFrameAndAngleForRelativePositions(&vineSprite, prevIndex, nextIndex);
                 }
             }
+            if (vineSprite.frameKey) {
             spriteManAddSprite(vineSprite);
+            }
 
             // debug vine targets
             //vineSprite.tint = 0xff0000;
@@ -1365,6 +1406,7 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
         vine_node *vine = &vg->vineNodeList.values[i];
         if (vine->active && vine->hasFlower) {
+            if (vine->wasTrimmed && vine->trimTimer <= 0.0f) { continue; }
             sprite flowerSprite = defaultSprite();
             flowerSprite.atlasKey = "game_atlas";
             flowerSprite.frameKey = "flower";
@@ -1500,6 +1542,59 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     spriteManPopMatrix();
     spriteManPopMatrix();
 
+    u32 time = (u32)vg->gameTime;
+    u32 seconds = time % 60;
+    u32 minutes = time / 60;
+    u32 hours = time / 3600;
+    char *timeString = tempStringFromI32((i32)hours);
+    timeString = tempStringAppend(timeString, ":");
+    if (minutes < 10) {
+        timeString = tempStringAppend(timeString, "0");
+    }
+    timeString = tempStringAppend(timeString, tempStringFromI32((i32)minutes));
+    timeString = tempStringAppend(timeString, ":");
+    if (seconds < 10) {
+        timeString = tempStringAppend(timeString, "0");
+    }
+    timeString = tempStringAppend(timeString, tempStringFromI32((i32)seconds));
+
+    sprite_text labelText = {
+        .text = timeString,
+        .fontKey = "font",
+        .x = 106.0f,
+        .y = 349.0f
+    };
+    centerText(&labelText);
+    spriteManAddText(labelText);
+
+    sprite_text scoreText = {
+        .text = tempStringFromI32(vg->score),
+        .fontKey = "font",
+        .x = 157.0f,
+        .y = 349.0f
+    };
+    centerText(&scoreText);
+    spriteManAddText(scoreText);
+
+    char *trimmersString = tempStringAppend("x", tempStringFromI32(vg->numTrimmers));
+    sprite_text trimmersText = {
+        .text = trimmersString,
+        .fontKey = "font",
+        .x = 218.0f,
+        .y = 349.0f
+    };
+    centerText(&trimmersText);
+    spriteManAddText(trimmersText);
+
+    sprite trimmersSprite = defaultSprite();
+    trimmersSprite.atlasKey = "game_atlas";
+    trimmersSprite.frameKey = "trimmers";
+    trimmersSprite.scale = 0.70f;
+    trimmersSprite.anchor.x = 0.5f;
+    trimmersSprite.anchor.y = 0.5f;
+    trimmersSprite.pos.x = 202.0f;
+    trimmersSprite.pos.y = 349.0f;
+    spriteManAddSprite(trimmersSprite);
 }
 
 void drawVineGame (vine_game *vg, plat_api platAPI) {

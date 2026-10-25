@@ -208,7 +208,7 @@ int main (void) {
     platAPI.consoleLog = (plat_console_log *)consoleLog;
     platAPI.loadFile = (plat_load_file *)readFile;
     platAPI.rngSeedFromTime = (plat_rng_seed_from_time *)rngSeedFromTime;
-    platAPI.mainMemorySize = 64 * 1024 * 1024;
+    platAPI.mainMemorySize = 24 * 1024 * 1024;
     platAPI.mainMemory = malloc(platAPI.mainMemorySize);
     memset(platAPI.mainMemory, 0, platAPI.mainMemorySize);
     platAPI.assetMemorySize = 64 * 1024 * 1024;

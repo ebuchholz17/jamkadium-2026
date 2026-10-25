@@ -92,6 +92,10 @@ struct vine_node {
     b32 hasFlower;
     f32 flowerAppearTimer;
     f32 flowerSpin;
+
+    b32 wasTrimmed;
+    f32 trimTimer;
+    f32 deadTimer;
 };
 
 #define LIST_TYPE vine_node

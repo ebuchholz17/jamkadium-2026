@@ -201,6 +201,23 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
+            <key type="filename">game_atlas/button_down.png</key>
+            <key type="filename">game_atlas/button_over.png</key>
+            <key type="filename">game_atlas/button_up.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>24,8,48,17</rect>
+                <key>scale9Paddings</key>
+                <rect>24,8,48,17</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
             <key type="filename">game_atlas/dpad_down_down.png</key>
             <key type="filename">game_atlas/dpad_down_up.png</key>
             <key type="filename">game_atlas/dpad_up.png</key>
@@ -301,21 +318,7 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">game_atlas/minimap_box.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>spriteScale</key>
-                <double>1</double>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>4,4,8,8</rect>
-                <key>scale9Paddings</key>
-                <rect>4,4,8,8</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
+            <key type="filename">game_atlas/leaves.png</key>
             <key type="filename">game_atlas/vine_corner.png</key>
             <key type="filename">game_atlas/vine_head_0.png</key>
             <key type="filename">game_atlas/vine_head_1.png</key>
@@ -332,6 +335,36 @@
                 <rect>6,6,12,12</rect>
                 <key>scale9Paddings</key>
                 <rect>6,6,12,12</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">game_atlas/message_panel.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>36,16,72,31</rect>
+                <key>scale9Paddings</key>
+                <rect>36,16,72,31</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
+            <key type="filename">game_atlas/minimap_box.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>4,4,8,8</rect>
+                <key>scale9Paddings</key>
+                <rect>4,4,8,8</rect>
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
