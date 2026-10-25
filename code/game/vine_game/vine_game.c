@@ -3,6 +3,7 @@
 #include "../gng_bool.h"
 #include "../gng_platform.h"
 #include "../gng_random.h"
+#include "../gng_audio.h"
 #include "../gng_sprites.h"
 #include "../gng_virtual_input.h"
 
@@ -624,6 +625,7 @@ void openCellWithVine (mine_cell *cell, vine_node *vine) {
                 vine->flowerAppearTimer = 0.0f;
                 vine->flowerSpin = 0.0f;
                 vg->score += 200;
+                soundManPlaySound("flower_appeared", false);
             }
             else {
                 openCell(cell);
@@ -632,7 +634,8 @@ void openCellWithVine (mine_cell *cell, vine_node *vine) {
         else {
             vine->isEnraged = true;
             vine->enrageCellCount = 3;
-            // TODO(vg) SFX
+            soundManPlaySound("vine_enraged", false);
+
             openCell(cell);
         }
     }
@@ -641,11 +644,13 @@ void openCellWithVine (mine_cell *cell, vine_node *vine) {
     }
 }
 
-void splitVine (vine_node *vineNode, mine_cell *cellAhead) {
+b32 splitVine (vine_node *vineNode, mine_cell *cellAhead) {
     vineNode->isHead = false;
     mine_cell *neighbors[4];
     i32 numNeighbors = 0;
     getAvailableNeighborCellsToVine(vineNode, neighbors, &numNeighbors);
+
+    b32 vineSplit = false;
 
     mine_cell *cellsToSpawnVine[2];
     i32 numCellsToSpawnVinesIn = 0;
@@ -711,7 +716,10 @@ void splitVine (vine_node *vineNode, mine_cell *cellAhead) {
             vineNode->next1 = newVine->id;
         }
 
+        vineSplit = i >= 1;
     }
+
+    return vineSplit;
 
 }
 
@@ -726,7 +734,8 @@ void growVine (vine_node *vineNode) {
         mine_cell *cell = &vg->cells[nextRow * vg->fieldWidth + nextCol];
 
         if (vineNode->lifeTime >= vg->vineSplitLifeTime) {
-            splitVine(vineNode, cell);
+            b32 vineSplit = splitVine(vineNode, cell);
+            soundManPlaySound("vine_split", false);
         }
         else {
             vine_node *newVine = spawnNewVine();
@@ -735,6 +744,8 @@ void growVine (vine_node *vineNode) {
             newVine->isHead = true;
             newVine->bombStrat = VINE_TARGET_BOMB_STRATEGY_NEAREST;
             newVine->lifeTime = vineNode->lifeTime + 1;
+
+            soundManPlaySound("vine_grew", false);
 
             cell->vineID = newVine->id;
 
@@ -867,7 +878,8 @@ void useTrimmersOnVine (vine_node *vine) {
         if (next0) {
             nextCell = &vg->cells[next0->row * vg->fieldWidth + next0->col];
         }
-        splitVine(vine, nextCell);
+        b32 vineSplit = splitVine(vine, nextCell);
+        soundManPlaySound("vine_trimmed", false);
     }
 }
 
@@ -1035,12 +1047,14 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                             openCell(cell);
                         }
                     }
+                    soundManPlaySound("cell_clicked", false);
                 }
                 else {
                     // trimmers
                     if (cell->hasTrimmers) {
                         cell->hasTrimmers = false;
                         vg->numTrimmers++;
+                        soundManPlaySound("trimmers_collected", false);
                         // TODO(vg) SFX
                     }
                     else if (!cell->hasBomb && cell->numAdjBombs > 0) {
@@ -1065,6 +1079,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                         }
                         if (numFlaggedNeighbors == cell->numAdjBombs) {
                             //playSound("click", gameSounds, assets);
+                            soundManPlaySound("cell_clicked", false);
 
                             for (i32 i = -1; i <= 1; ++i) {
                                 for (i32 j = -1; j <= 1; ++j) {
@@ -1105,7 +1120,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                 }
                 else if (!cell->open) {
                     cell->flagged = !cell->flagged;
-                    //playSound("click", gameSounds, assets);
+                    soundManPlaySound("cell_clicked", false);
                 }
             }
         }
@@ -1155,6 +1170,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
 
     if (vg->openedCellCausedGameOver) {
         vg->state = VINE_GAME_STATE_GAME_OVER_SCREEN;
+        soundManPlaySound("mine_exploded", false);
     }
     else {
         b32 nonBombCellIsClosed = false;
@@ -1170,6 +1186,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
 winCheckDone:
         if (!nonBombCellIsClosed) {
             vg->state = VINE_GAME_STATE_WIN_SCREEN;
+            soundManPlaySound("victory", false);
         }
     }
 }
@@ -1793,6 +1810,10 @@ void drawEndScreen (b32 wonGame) {
 
     char *gameOverString = "game over";
     char *wonString = "you win!";
+    i32 numFlowers = getNumFlowers();
+    if (numFlowers == vg->numBombs) {
+        wonString = "perfect!";
+    }
     sprite_text labelText = {
         .text = wonGame ? wonString : gameOverString,
         .fontKey = "font",
@@ -1802,7 +1823,6 @@ void drawEndScreen (b32 wonGame) {
     centerText(&labelText);
     spriteManAddText(labelText);
 
-    i32 numFlowers = getNumFlowers();
     char *flowerString = tempStringAppend("x", tempStringFromI32(numFlowers));
     sprite_text flowerText = {
         .text = flowerString,

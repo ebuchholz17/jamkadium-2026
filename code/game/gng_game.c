@@ -282,6 +282,69 @@ UPDATE_GNG_GAME(updateGNGGame) {
             .loaded = false,
             .key = "minimap_box"
         });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "cell_clicked",
+            .path = "assets/cell_clicked.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "cell_clicked"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "flower_appeared",
+            .path = "assets/flower_appeared.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "flower_appeared"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "mine_exploded",
+            .path = "assets/mine_exploded.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "mine_exploded"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "trimmers_collected",
+            .path = "assets/trimmers_collected.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "trimmers_collected"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "victory",
+            .path = "assets/victory.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "victory"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "vine_enraged",
+            .path = "assets/vine_enraged.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "vine_enraged"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "vine_grew",
+            .path = "assets/vine_grew.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "vine_grew"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "vine_split",
+            .path = "assets/vine_split.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "vine_split"
+        });
+        asset_to_load_listPush(assetList, (asset_to_load){
+            .name = "vine_trimmed",
+            .path = "assets/vine_trimmed.wav",
+            .type = ASSET_TO_LOAD_TYPE_WAV,
+            .loaded = false,
+            .key = "vine_trimmed"
+        });
 
         for (u32 assetIndex = 0; assetIndex < assetList->numValues; ++assetIndex) {
             asset_to_load *asset = &assetList->values[assetIndex];
