@@ -80,6 +80,8 @@ void initVineGame (vine_game *vineGame, mem_arena *memory) {
     vg->vineSeekDelay = 3.5f;
     vg->vineSplitLifeTime = 15;
     vg->numTrimmers = 0;
+
+    vg->buttons = button_listInit(memory, 10);
 }
 
 b32 cellIsNextToStartingCell (mine_cell *cell, mine_cell *startingCell) {
@@ -869,8 +871,7 @@ void useTrimmersOnVine (vine_node *vine) {
     }
 }
 
-
-void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input, f32 dt) {
+void keyboardCameraMovement (game_input *input, f32 dt) {
     if (input->rightArrow.down || input->dKey.down) {
         vg->cameraX += CAMERA_SPEED * dt;
     }
@@ -883,7 +884,9 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     if (input->downArrow.down|| input->sKey.down) {
         vg->cameraY += CAMERA_SPEED * dt;
     }
+}
 
+void pointerCameraMovement (game_input *input) {
     if (input->pointerJustDown) {
         vg->pointerDownPos = (vec2){
             .x = input->pointerX,
@@ -977,11 +980,28 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
         vg->cameraX -= cameraDisplacement.x;
         vg->cameraY -= cameraDisplacement.y;
     }
+}
 
+
+void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input, f32 dt) {
+    keyboardCameraMovement(input, dt);
+    pointerCameraMovement(input);
+
+
+    spriteManPushTransform((sprite_transform){
+        .pos = { .x = -vg->cameraX, .y = -vg->cameraY },
+        .scale = vg->cameraZoom
+    });
+
+    mat3x3 gameTransform = spriteManPeekMatrix();
+    mat3x3 invGameTransform = mat3x3Inv(gameTransform);
+    vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
+    localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+
+    spriteManPopMatrix();
 
     i32 mouseRow = (i32)(localPointerPos.y / CELL_DIM);
     i32 mouseCol = (i32)(localPointerPos.x / CELL_DIM);
-
 
     if (!vg->dragging && !vg->panning) {
         if (mouseRow >= 0 && mouseRow < vg->fieldHeight && mouseCol >= 0 && mouseCol < vg->fieldWidth) {
@@ -1138,6 +1158,91 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     }
 }
 
+b32 doButton (button b, vec3 pointerPos, b32 pointerDown, b32 pointerJustDown) {
+    if (pointerPos.x >= b.pos.x && pointerPos.x < b.pos.x + b.dims.x &&
+        pointerPos.y >= b.pos.y && pointerPos.y < b.pos.y + b.dims.y)
+    {
+        b.isOver = true;
+        if (pointerDown) {
+            b.isDown = true;
+        }
+    }
+
+    button_listPush(&vg->buttons, b);
+
+    return b.isDown && pointerJustDown;
+}
+
+void updateTitleScreen (game_input *input, mem_arena *memory) {
+    mat3x3 gameTransform = spriteManPeekMatrix();
+    mat3x3 invGameTransform = mat3x3Inv(gameTransform);
+    vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
+    localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+
+    button difficultyButton = (button){ 
+            .upFrame = "button_up", 
+            .overFrame = "button_over", 
+            .downFrame = "button_down", 
+            .icon = 0,
+            .label = "easy",
+            .labelIcon = 0,
+            .pos = (vec2){ .x = 143.0f, .y = 190.0f },
+            .dims = (vec2){ .x = 96.0f, .y = 32.0f}
+    };
+
+    if (doButton(difficultyButton, localPointerPos, input->pointerDown, input->pointerJustDown)) {
+        vg->state = VINE_GAME_STATE_GAMEPLAY;
+        startGameWithDifficulty(VINE_GAME_DIFFICULTY_EASY, memory);
+        //playSound("start_sound", gameSounds, assets);
+    }
+
+    difficultyButton.label = "medium";
+    difficultyButton.pos.x = 273.0f;
+    if (doButton(difficultyButton, localPointerPos, input->pointerDown, input->pointerJustDown)) {
+        vg->state = VINE_GAME_STATE_GAMEPLAY;
+        startGameWithDifficulty(VINE_GAME_DIFFICULTY_MEDIUM, memory);
+        //playSound("start_sound", gameSounds, assets);
+    }
+
+    difficultyButton.label = "hard";
+    difficultyButton.pos.x = 403.0f;
+    if (doButton(difficultyButton, localPointerPos, input->pointerDown, input->pointerJustDown)) {
+        vg->state = VINE_GAME_STATE_GAMEPLAY;
+        startGameWithDifficulty(VINE_GAME_DIFFICULTY_HARD, memory);
+        //playSound("start_sound", gameSounds, assets);
+    }
+}
+
+void updateGameEnd (mem_arena *memory, game_input *input, f32 dt) {
+    keyboardCameraMovement(input, dt);
+    pointerCameraMovement(input);
+
+    mat3x3 gameTransform = spriteManPeekMatrix();
+    mat3x3 invGameTransform = mat3x3Inv(gameTransform);
+    vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
+    localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+
+    button difficultyButton = (button){ 
+            .upFrame = "button_up", 
+            .overFrame = "button_over", 
+            .downFrame = "button_down", 
+            .icon = 0,
+            .label = "continue",
+            .labelIcon = 0,
+            .pos = (vec2){ .x = 273.0f, .y = 200.0f },
+            .dims = (vec2){ .x = 96.0f, .y = 32.0f}
+    };
+
+    if (doButton(difficultyButton, localPointerPos, input->pointerDown, input->pointerJustDown)) {
+        vg->shouldReset = true;
+        //playSound("start_sound", gameSounds, assets);
+    }
+
+    if (!input->pointerDown) {
+        vg->dragging = false;
+        vg->panning = false;
+    }
+}
 
 void updateVineGame (vine_game *bg, game_input *input, 
                        virtual_input *vInput, f32 dt, plat_api platAPI, mem_arena *memory,
@@ -1149,22 +1254,22 @@ void updateVineGame (vine_game *bg, game_input *input,
     //mat3x3 invGameTransform = mat3x3Inv(gameTransform);
     //vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
     //localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+    //
+    vg->buttons.numValues = 0;
 
     switch (vg->state) {
         case VINE_GAME_STATE_TITLE_SCREEN: {
-            if (input->pointerJustUp) {
-                vg->state = VINE_GAME_STATE_GAMEPLAY;
-                startGameWithDifficulty(VINE_GAME_DIFFICULTY_HARD, memory);
-                //playSound("start_sound", gameSounds, assets);
-            }
+            updateTitleScreen(input, memory);
         } break;
         case VINE_GAME_STATE_GAMEPLAY: {
             updateGameplay(memory, sm, input, dt);
-        vg->gameTime += dt;
+            vg->gameTime += dt;
         } break;
         case VINE_GAME_STATE_GAME_OVER_SCREEN: {
+            updateGameEnd(memory, input, dt);
         } break;
         case VINE_GAME_STATE_WIN_SCREEN: {
+            updateGameEnd(memory, input, dt);
         } break;
     }
 
@@ -1480,7 +1585,6 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     mat3x3 minimapTransform = mat3x3ScaleXY(xScale, yScale);
     spriteManPushMatrix(minimapTransform);
 
-
     for (int i = 0; i < vg->fieldHeight; ++i) {
         for (int j = 0; j < vg->fieldWidth; ++j) {
             mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
@@ -1514,23 +1618,34 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
         }
     }
 
-    i32 screenBoxesWidth = (i32)(640.0f / 24.0f);
-    i32 screenBoxesHeight = (i32)(360.0f / 24.0f);
+    f32 fieldWidth = vg->fieldWidth * CELL_DIM;
+    f32 screenWidth = 640.0f;
+    if (screenWidth > fieldWidth) {
+        screenWidth = fieldWidth;
+    }
+    f32 fieldHeight = vg->fieldHeight * CELL_DIM;
+    f32 screenHeight = 360.0f;
+    if (screenHeight > fieldHeight) {
+        screenHeight = fieldHeight;
+    }
+
+    i32 screenBoxesWidth = (i32)(screenWidth / 24.0f);
+    i32 screenBoxesHeight = (i32)(screenHeight / 24.0f);
 
     f32 cameraX = vg->cameraX;
     if (cameraX < 0.0f) {
         cameraX = 0.0f;
     }
-    if (cameraX >= vg->fieldWidth * CELL_DIM - 640.0f) {
-        cameraX = vg->fieldWidth * CELL_DIM - 640.0f;
+    if (cameraX >= vg->fieldWidth * CELL_DIM - screenWidth) {
+        cameraX = vg->fieldWidth * CELL_DIM - screenWidth;
     }
     cameraX *= (16.0f / 24.0f);
     f32 cameraY = vg->cameraY;
     if (cameraY < 0.0f) {
         cameraY = 0.0f;
     }
-    if (cameraY >= vg->fieldHeight * CELL_DIM - 360.0f) {
-        cameraY = vg->fieldHeight * CELL_DIM - 360.0f;
+    if (cameraY >= vg->fieldHeight * CELL_DIM - screenHeight) {
+        cameraY = vg->fieldHeight * CELL_DIM -screenHeight;
     }
     cameraY *= (16.0f / 24.0f);
 
@@ -1633,6 +1748,66 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
     spriteManAddSprite(trimmersSprite);
 }
 
+i32 getNumFlowers (void) {
+    i32 result = 0;
+    for (int i = 0; i < vg->fieldHeight; ++i) {
+        for (int j = 0; j < vg->fieldWidth; ++j) {
+            mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+
+            vine_node *vine = getVineByID(cell->vineID);
+            if (vine && vine->active &&vine->hasFlower) {
+                result++;
+
+            }
+
+        }
+    }
+    return result;
+}
+
+void drawEndScreen (b32 wonGame) {
+    sprite panelSprite = defaultSprite();
+    panelSprite.atlasKey = "game_atlas";
+    panelSprite.frameKey = "message_panel";
+    panelSprite.anchor.x = 0.5f;
+    panelSprite.anchor.y = 0.5f;
+    panelSprite.pos.x = 320.0f;
+    panelSprite.pos.y = 160.0f;
+    spriteManAddSprite(panelSprite);
+
+    char *gameOverString = "game over";
+    char *wonString = "you win!";
+    sprite_text labelText = {
+        .text = wonGame ? wonString : gameOverString,
+        .fontKey = "font",
+        .x = 320.0f,
+        .y = 150.0f
+    };
+    centerText(&labelText);
+    spriteManAddText(labelText);
+
+    i32 numFlowers = getNumFlowers();
+    char *flowerString = tempStringAppend("x", tempStringFromI32(numFlowers));
+    sprite_text flowerText = {
+        .text = flowerString,
+        .fontKey = "font",
+        .x = 330.0f,
+        .y = 170.0f
+    };
+    centerText(&flowerText);
+    spriteManAddText(flowerText);
+
+    sprite flowerSprite = defaultSprite();
+    flowerSprite.atlasKey = "game_atlas";
+    flowerSprite.frameKey = "flower";
+    flowerSprite.scale = 0.70f;
+    flowerSprite.anchor.x = 0.5f;
+    flowerSprite.anchor.y = 0.5f;
+    flowerSprite.pos.x = 310.0f;
+    flowerSprite.pos.y = 170.0f;
+    spriteManAddSprite(flowerSprite);
+}
+
 void drawVineGame (vine_game *vg, plat_api platAPI) {
     switch (vg->state) {
         case VINE_GAME_STATE_TITLE_SCREEN: {
@@ -1645,34 +1820,50 @@ void drawVineGame (vine_game *vg, plat_api platAPI) {
             centerText(&labelText);
             spriteManAddText(labelText);
 
-            {
-                sprite_text labelText = {
-                    .text = "Click to continue",
-                    .fontKey = "font",
-                    .x = 320.0f,
-                    .y = 200.0f
-                };
-                centerText(&labelText);
-                spriteManAddText(labelText);
-            }
         } break;
         case VINE_GAME_STATE_GAMEPLAY: {
             drawVineGameGameplay(vg, platAPI);
         } break;
         case VINE_GAME_STATE_GAME_OVER_SCREEN: {
             drawVineGameGameplay(vg, platAPI);
-            sprite_text labelText = {
-                .text = "game over",
-                .fontKey = "font",
-                .x = 320.0f,
-                .y = 160.0f
-            };
-            centerText(&labelText);
-            spriteManAddText(labelText);
+            drawEndScreen(false);
 
         } break;
         case VINE_GAME_STATE_WIN_SCREEN: {
-
+            drawVineGameGameplay(vg, platAPI);
+            drawEndScreen(true);
         } break;
+    }
+
+    for (i32 i = 0; i < vg->buttons.numValues; i++) {
+        button *b = &vg->buttons.values[i];
+        {
+            sprite s = defaultSprite();
+            s.pos = b->pos;
+            s.atlasKey = "game_atlas";
+            s.frameKey = b->upFrame;
+            if (b->isOver) {
+                s.frameKey = b->overFrame;
+            }
+            if (b->isDown) {
+                s.frameKey = b->downFrame;
+            }
+            spriteManAddSprite(s);
+        }
+
+        if (b->label != 0) {
+            vec2 labelPos = b->pos;
+            labelPos = vec2Add(labelPos, (vec2){ .x = 48.0f, .y = 16.0f});
+            labelPos = vec2Add(labelPos, b->labelOffset);
+
+            sprite_text labelText = {
+                .text = b->label,
+                .fontKey = "font",
+                .x = labelPos.x,
+                .y = labelPos.y
+            };
+            centerText(&labelText);
+            spriteManAddText(labelText);
+        }
     }
 }

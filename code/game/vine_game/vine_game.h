@@ -61,6 +61,23 @@ typedef enum {
     VINE_TARGET_BOMB_STRATEGY_RANDOM
 } vine_target_bomb_strategy;
 
+typedef struct button {
+    char *upFrame;
+    char *overFrame;
+    char *downFrame;
+    char *icon;
+    char *label;
+    char *labelIcon;
+    b32 isOver;
+    b32 isDown;
+    vec2 pos;
+    vec2 dims;
+    vec2 labelOffset;
+} button;
+
+#define LIST_TYPE button
+#include "../list.h"
+
 typedef struct vine_node vine_node;
 struct vine_node {
     entity_id id;
@@ -150,6 +167,8 @@ typedef struct vine_game {
     i32 numTrimmers;
 
     b32 openedCellCausedGameOver;
+
+    button_list buttons;
 } vine_game;
 
 #endif
