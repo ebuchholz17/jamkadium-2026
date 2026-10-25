@@ -213,6 +213,7 @@ int main (void) {
     memset(platAPI.mainMemory, 0, platAPI.mainMemorySize);
     platAPI.assetMemorySize = 64 * 1024 * 1024;
     platAPI.assetMemory = malloc(platAPI.assetMemorySize);
+    memset(platAPI.assetMemory, 0, platAPI.assetMemorySize);
     platAPI.scratchMemorySize = 24 * 1024 * 1024;
     platAPI.scratchMemory = malloc(platAPI.scratchMemorySize);
 
@@ -291,7 +292,7 @@ int main (void) {
                 plat_loaded_file *platLoadedFile = &loadedFiles[numLoadedFiles++];
 
                 platLoadedFile->id = fileToLoad.id;
-                platLoadedFile->data = malloc(fileSize);
+                platLoadedFile->data = malloc(fileSize + 1); // hack
                 platLoadedFile->dataSize = fileSize;
 
                 size_t elementReadCount = fread(platLoadedFile->data, fileSize, 1, file);

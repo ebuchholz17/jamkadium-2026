@@ -957,9 +957,9 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
                 mine_cell *cell = &vg->cells[mouseRow * vg->fieldWidth + mouseCol];
                 if (!cell->open) {
                     if (!cell->flagged) {
-                        cell->open = true;
                         if (!vg->firstCellWasOpened) {
                             vg->firstCellWasOpened = true;
+                            cell->open = true;
                             cell->hasBomb = false;
                             placeBombs(cell);
 
