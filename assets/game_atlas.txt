@@ -1,5 +1,5 @@
 game_atlas.png
-size: 254, 210
+size: 254, 296
 format: RGBA8888
 filter: Linear, Linear
 repeat: none
@@ -169,6 +169,13 @@ golfman
   xy: 32, 54
   size: 32, 32
   orig: 32, 32
+  offset: 0, 0
+  index: -1
+hud
+  rotate: false
+  xy: 2, 210
+  size: 240, 84
+  orig: 240, 84
   offset: 0, 0
   index: -1
 minimap_box

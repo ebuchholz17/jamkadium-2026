@@ -85,6 +85,13 @@ struct vine_node {
     entity_id prev;
     entity_id next0;
     entity_id next1;
+
+    i32 headFrame;
+    f32 headFrameTimer;
+
+    b32 hasFlower;
+    f32 flowerAppearTimer;
+    f32 flowerSpin;
 };
 
 #define LIST_TYPE vine_node
@@ -112,6 +119,7 @@ typedef struct vine_game {
     vec2 gameSpacePointerDownPos;
     b32 dragging;
     vec2 dragStartCameraPos;
+    b32 panning;
 
     f32 cameraX;
     f32 cameraY;

@@ -612,6 +612,9 @@ void openCell (mine_cell *cell) {
 void openCellWithVine (mine_cell *cell, vine_node *vine) {
     if (cell->flagged && cell->hasBomb) {
         // TODO(vg) make flower
+        vine->hasFlower = true;
+        vine->flowerAppearTimer = 0.0f;
+        vine->flowerSpin = 0.0f;
     }
     else {
         openCell(cell);
@@ -828,8 +831,54 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
         };
     }
 
+    mat3x3 gameTransform = spriteManPeekMatrix();
+    mat3x3 invGameTransform = mat3x3Inv(gameTransform);
+    vec3 nonCameraPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
+    nonCameraPointerPos = vec3MatrixMul(invGameTransform, nonCameraPointerPos);
+
+    spriteManPushTransform((sprite_transform){
+        .pos = { .x = -vg->cameraX, .y = -vg->cameraY },
+        .scale = vg->cameraZoom
+    });
+
+    gameTransform = spriteManPeekMatrix();
+    invGameTransform = mat3x3Inv(gameTransform);
+    vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
+    localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
+
+    b32 panning = false;
+    if (input->pointerJustDown) {
+        if (nonCameraPointerPos.x >= 3 && nonCameraPointerPos.x < 80 &&nonCameraPointerPos.y >= 281 && nonCameraPointerPos.y < 356) {
+            vg->panning = true;
+        }
+    }
+
+    if (input->pointerDown && vg->panning) {
+            b32 panning = true;
+            f32 pointerX = nonCameraPointerPos.x - 3;
+            f32 pointerY = nonCameraPointerPos.y - 281;
+            pointerX /= 77.0f;
+            pointerY /= 75.0f;
+            pointerX *= vg->fieldWidth * CELL_DIM;
+            pointerY *= vg->fieldHeight * CELL_DIM;
+            vg->cameraX = pointerX - 320.f;
+            vg->cameraY = pointerY - 160.f;
+            if (vg->cameraX < -320.0f) {
+                vg->cameraX = -320.0f;
+            }
+            if (vg->cameraX > vg->fieldWidth * CELL_DIM-320.0f) {
+                vg->cameraX = vg->fieldWidth * CELL_DIM-320.0f;
+            }
+            if (vg->cameraY < -160.0f) {
+                vg->cameraY = -160.0f;
+            }
+            if (vg->cameraY > vg->fieldHeight * CELL_DIM-160.0f) {
+                vg->cameraY = vg->fieldHeight * CELL_DIM-160.0f;
+            }
+    }
+
     b32 startDragging = false;
-    if (input->pointerDown) {
+    if (input->pointerDown && !vg->panning) {
         if (!vg->dragging) {
             vec2 pointerDisp = vec2Subtract((vec2){.x = input->pointerX, .y = input->pointerY }, vg->pointerDownPos);
             if (vec2Length(pointerDisp) > 30.0f) {
@@ -842,16 +891,6 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
             }
         }
     }
-
-    spriteManPushTransform((sprite_transform){
-        .pos = { .x = -vg->cameraX, .y = -vg->cameraY },
-        .scale = vg->cameraZoom
-    });
-
-    mat3x3 gameTransform = spriteManPeekMatrix();
-    mat3x3 invGameTransform = mat3x3Inv(gameTransform);
-    vec3 localPointerPos = (vec3){ (f32)input->pointerX, (f32)input->pointerY, 1.0f };
-    localPointerPos = vec3MatrixMul(invGameTransform, localPointerPos);
 
     if (input->pointerJustDown) {
         vg->gameSpacePointerDownPos = (vec2){
@@ -884,7 +923,7 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     i32 mouseCol = (i32)(localPointerPos.x / CELL_DIM);
 
 
-    if (!vg->dragging) {
+    if (!vg->dragging && !vg->panning) {
         if (mouseRow >= 0 && mouseRow < vg->fieldHeight && mouseCol >= 0 && mouseCol < vg->fieldWidth) {
             if (input->pointerJustUp) {
                 mine_cell *cell = &vg->cells[mouseRow * vg->fieldWidth + mouseCol];
@@ -994,17 +1033,36 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
 
     if (!input->pointerDown) {
         vg->dragging = false;
+        vg->panning = false;
     }
 
     // grow vines
     for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
         vine_node *vine = &vg->vineNodeList.values[i];
         if (vine->active && vine->isHead) {
+            vine->headFrameTimer += dt;
+            if (vine->headFrameTimer >= 0.083f) {
+                vine->headFrame++;
+                if (vine->headFrame > 2) {
+                    vine->headFrame = 2;
+                }
+                vine->headFrameTimer -= 0.083f;
+            }
+
             vine->seekTimer -= dt;
             if (vine->seekTimer <= 0.0f) {
                 growVine(vine);
             }
         }
+
+        if (vine->hasFlower) {
+            vine->flowerAppearTimer += dt;
+            if (vine->flowerAppearTimer > 1.0f) {
+                vine->flowerAppearTimer = 1.0f;
+            }
+            vine->flowerSpin += dt * 0.1f;
+        }
+
     }
 
     if (vg->openedCellCausedGameOver) {
@@ -1120,7 +1178,6 @@ void setVineSpriteFrameAndAngleForRelativePositions (sprite *vineSprite, i32 pre
         case 2: {
             switch (nextPos) {
                 case 0: {
-                    vineSprite->rotation = 0.75f;
                     vineSprite->frameKey = "vine_straight";
                 } break;
                 case 1: {
@@ -1256,7 +1313,17 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
                 vineSprite.frameKey = "vine_root";
             }
             else if (vine->isHead) {
+                switch (vine->headFrame) {
+                case 0: 
+                vineSprite.frameKey = "vine_head_0";
+                      break;
+                case 1: 
+                vineSprite.frameKey = "vine_head_1";
+                      break;
+                case 2: 
                 vineSprite.frameKey = "vine_head_2";
+                      break;
+                }
                 vine_node *neighbor = getVineByID(vine->prev);
                 if (neighbor) {
                     i32 index = getVineRelativePositionIndexToNeighbor(vine, neighbor);
@@ -1295,13 +1362,46 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
         }
     }
 
+    for (i32 i = 0; i < vg->vineNodeList.numValues; i++) {
+        vine_node *vine = &vg->vineNodeList.values[i];
+        if (vine->active && vine->hasFlower) {
+            sprite flowerSprite = defaultSprite();
+            flowerSprite.atlasKey = "game_atlas";
+            flowerSprite.frameKey = "flower";
+
+            flowerSprite.alpha = vine->flowerAppearTimer * 1.0f;
+            flowerSprite.scale = (1.0f - vine->flowerAppearTimer) * 0.3f + vine->flowerAppearTimer * 1.0f;
+            flowerSprite.rotation = vine->flowerSpin;
+            flowerSprite.pos.x = (float)(vine->col * CELL_DIM) + CELL_DIM * 0.5f;
+            flowerSprite.pos.y = (float)(vine->row * CELL_DIM) + CELL_DIM * 0.5f;
+            flowerSprite.anchor.x = 0.5f;
+            flowerSprite.anchor.y = 0.5f;
+
+            spriteManAddSprite(flowerSprite);
+        }
+    }
+
     spriteManPopMatrix();
 
-    // minimap
+    sprite hudSprite = defaultSprite();
+    hudSprite.atlasKey = "game_atlas";
+    hudSprite.frameKey = "hud";
+    hudSprite.anchor.y = 1.0f;
+    hudSprite.pos.x = -1.0f;
+    hudSprite.pos.y = 360.0f;
+    spriteManAddSprite(hudSprite);
+
+    // minimap 77x75
     spriteManPushTransform((sprite_transform){
-        .pos = { .x = 0, .y = 300.0f },
-        .scale = 1.0f / 8.0f
+        .pos = { .x = 3, .y = 281.0f },
+        .scale = 1.0f
     });
+
+    f32 xScale = (1 / 16.0f) * (77.0f / vg->fieldWidth);
+    f32 yScale = (1 / 16.0f) * (75.0f / vg->fieldHeight);
+    mat3x3 minimapTransform = mat3x3ScaleXY(xScale, yScale);
+    spriteManPushMatrix(minimapTransform);
+
 
     for (int i = 0; i < vg->fieldHeight; ++i) {
         for (int j = 0; j < vg->fieldWidth; ++j) {
@@ -1313,19 +1413,19 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
             boxSprite.scale = 1.0f;
 
             if (vine && vine->active) {
-                boxSprite.tint = 0x0000ff;
+                boxSprite.tint = 0x5700d0;
             }
             else {
                 if (!cell->open) {
                     if (cell->flagged) {
-                        boxSprite.tint = 0xff0000;
+                        boxSprite.tint = 0xc3ff3c;
                     }
                     else {
-                        boxSprite.tint = 0xffffff;
+                        boxSprite.tint = 0x002043;
                     }
                 }
                 else {
-                    boxSprite.tint = 0x000000;
+                    boxSprite.tint = 0x051a20;
                 }
             }
 
@@ -1336,6 +1436,68 @@ void drawVineGameGameplay (vine_game *vg, plat_api platAPI) {
         }
     }
 
+    i32 screenBoxesWidth = (i32)(640.0f / 24.0f);
+    i32 screenBoxesHeight = (i32)(360.0f / 24.0f);
+
+    f32 cameraX = vg->cameraX;
+    if (cameraX < 0.0f) {
+        cameraX = 0.0f;
+    }
+    if (cameraX >= vg->fieldWidth * CELL_DIM - 640.0f) {
+        cameraX = vg->fieldWidth * CELL_DIM - 640.0f;
+    }
+    cameraX *= (16.0f / 24.0f);
+    f32 cameraY = vg->cameraY;
+    if (cameraY < 0.0f) {
+        cameraY = 0.0f;
+    }
+    if (cameraY >= vg->fieldHeight * CELL_DIM - 360.0f) {
+        cameraY = vg->fieldHeight * CELL_DIM - 360.0f;
+    }
+    cameraY *= (16.0f / 24.0f);
+
+    for (i32 j = 0; j < screenBoxesWidth; j++) {
+        sprite boxSprite = defaultSprite();
+        boxSprite.textureKey = "minimap_box";
+        boxSprite.scale = 1.0f;
+
+        boxSprite.pos.x = cameraX  + 16.0f * j;
+        boxSprite.pos.y = cameraY  + (screenBoxesHeight-1) * 16.0f;
+
+        spriteManAddSprite(boxSprite);
+    }
+    for (i32 i = 0; i < screenBoxesHeight; i++) {
+        sprite boxSprite = defaultSprite();
+        boxSprite.textureKey = "minimap_box";
+        boxSprite.scale = 1.0f;
+
+        boxSprite.pos.x = cameraX  + (screenBoxesWidth-1) * 16.0f;
+        boxSprite.pos.y = cameraY  + 16.0f * i;
+
+        spriteManAddSprite(boxSprite);
+    }
+    for (i32 j = 0; j < screenBoxesWidth; j++) {
+        sprite boxSprite = defaultSprite();
+        boxSprite.textureKey = "minimap_box";
+        boxSprite.scale = 1.0f;
+
+        boxSprite.pos.x = cameraX  + 16.0f * j;
+        boxSprite.pos.y = cameraY ;
+
+        spriteManAddSprite(boxSprite);
+    }
+    for (i32 i = 0; i < screenBoxesHeight; i++) {
+        sprite boxSprite = defaultSprite();
+        boxSprite.textureKey = "minimap_box";
+        boxSprite.scale = 1.0f;
+
+        boxSprite.pos.x = cameraX ;
+        boxSprite.pos.y = cameraY  + 16.0f * i;
+
+        spriteManAddSprite(boxSprite);
+    }
+
+    spriteManPopMatrix();
     spriteManPopMatrix();
 
 }
