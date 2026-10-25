@@ -1156,6 +1156,22 @@ void updateGameplay (mem_arena *memory, mem_arena *tempMemory, game_input *input
     if (vg->openedCellCausedGameOver) {
         vg->state = VINE_GAME_STATE_GAME_OVER_SCREEN;
     }
+    else {
+        b32 nonBombCellIsClosed = false;
+        for (int i = 0; i < vg->fieldHeight; ++i) {
+            for (int j = 0; j < vg->fieldWidth; ++j) {
+                mine_cell *cell = &vg->cells[i * vg->fieldWidth + j];
+                if (!cell->hasBomb && !cell->open){
+                    nonBombCellIsClosed = true;
+                    goto winCheckDone;
+                }
+            }
+        }
+winCheckDone:
+        if (!nonBombCellIsClosed) {
+            vg->state = VINE_GAME_STATE_WIN_SCREEN;
+        }
+    }
 }
 
 b32 doButton (button b, vec3 pointerPos, b32 pointerDown, b32 pointerJustDown) {
