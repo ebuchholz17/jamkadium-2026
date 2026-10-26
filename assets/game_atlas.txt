@@ -1,5 +1,5 @@
 game_atlas.png
-size: 254, 390
+size: 255, 390
 format: RGBA8888
 filter: Linear, Linear
 repeat: none
@@ -61,9 +61,16 @@ repeat: none
   index: -1
 bomb
   rotate: false
-  xy: 2, 28
+  xy: 228, 2
   size: 25, 24
   orig: 25, 24
+  offset: 0, 0
+  index: -1
+bomb_unexploded
+  rotate: false
+  xy: 2, 28
+  size: 24, 24
+  orig: 24, 24
   offset: 0, 0
   index: -1
 button_down
@@ -89,7 +96,7 @@ button_up
   index: -1
 closed_cell
   rotate: false
-  xy: 29, 28
+  xy: 28, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
@@ -173,7 +180,7 @@ face_button_up
   index: -1
 flag
   rotate: false
-  xy: 55, 28
+  xy: 54, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
@@ -201,7 +208,7 @@ hud
   index: -1
 leaves
   rotate: false
-  xy: 81, 28
+  xy: 80, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
@@ -222,7 +229,7 @@ minimap_box
   index: -1
 open_cell
   rotate: false
-  xy: 107, 28
+  xy: 106, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
@@ -236,28 +243,28 @@ sheep
   index: -1
 trimmers
   rotate: false
-  xy: 133, 28
+  xy: 132, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
   index: -1
 vine_corner
   rotate: false
-  xy: 159, 28
+  xy: 158, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
   index: -1
 vine_head_0
   rotate: false
-  xy: 185, 28
+  xy: 184, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0
   index: -1
 vine_head_1
   rotate: false
-  xy: 211, 28
+  xy: 210, 28
   size: 24, 24
   orig: 24, 24
   offset: 0, 0

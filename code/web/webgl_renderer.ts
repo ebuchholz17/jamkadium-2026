@@ -176,7 +176,8 @@ function webglOnRenderSpritesStart (): void {
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
-    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0.00, 0.01569, 0.07843, 0.08627);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);

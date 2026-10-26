@@ -47,6 +47,8 @@ typedef struct mine_cell {
 
     f32 sortValue;
 
+    b32 hasHiddenVine;
+
     entity_id vineID;
 } mine_cell;
 
@@ -116,6 +118,9 @@ struct vine_node {
 
     b32 isEnraged;
     i32 enrageCellCount;
+
+    f32 currentDirection;
+    b32 isLeftVine;
 };
 
 #define LIST_TYPE vine_node
@@ -131,7 +136,8 @@ typedef enum {
 typedef enum {
     VINE_GAME_DIFFICULTY_EASY,
     VINE_GAME_DIFFICULTY_MEDIUM,
-    VINE_GAME_DIFFICULTY_HARD
+    VINE_GAME_DIFFICULTY_HARD,
+    VINE_GAME_DIFFICULTY_EXTREME
 } vine_game_difficulty;
 
 typedef struct vine_game {
@@ -154,6 +160,7 @@ typedef struct vine_game {
     i32 fieldHeight;
     i32 numTrimmersInField;
     i32 numBombs;
+    i32 numHiddenVinesInField;
 
     vine_game_state state;
 
